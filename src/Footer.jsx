@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { DESIGN_W, useWidthScale } from "./useCanvasScale.js";
 import Reveal from "./Reveal.jsx";
 import { Magnetic } from "./Tilt.jsx";
@@ -13,15 +14,21 @@ import { useBreakpoint } from "./useBreakpoint.js";
  */
 const INNER_W = 1580;
 
-/** Figma 70:1750 / 1758 / 1769 — 열마다 폭이 다르다 */
+/**
+ * Figma 70:1750 / 1758 / 1769 — 열마다 폭이 다르다.
+ *
+ * 값은 전부 자리표시자다. Figma 시안에 남아 있던 다른 회사의 실제
+ * 사업자번호·전화번호·주소를 그대로 두면 안 되므로 지웠다.
+ * 실제 정보를 받으면 이 배열만 바꾸면 된다.
+ */
 const COLUMNS = [
   {
     title: "INFO",
     width: 295,
     rowGap: 8,
     rows: [
-      ["대표 황만식", "사업자등록번호 142-85-08749"],
-      ["법인 사업자등록번호 215-81-61160"],
+      ["대표 000", "사업자등록번호 000-00-00000"],
+      ["통신판매업신고 0000-서울00-0000"],
     ],
   },
   {
@@ -29,15 +36,15 @@ const COLUMNS = [
     width: 321,
     rowGap: 8,
     rows: [
-      ["(품질) 031-334-6810", "(영업) 070-4334-5206"],
-      ["(구매) 070-4334-5207", "(개발) 070-4334-5885"],
+      ["(대표) 00-0000-0000", "(예약) 00-0000-0000"],
+      ["(가맹문의) 00-0000-0000", "(팩스) 00-0000-0000"],
     ],
   },
   {
     title: "ADRESS",
     width: 272,
     rowGap: 12,
-    rows: [["주소 경기도 용인시 처인구 이동읍 화산로 191"]],
+    rows: [["주소 000000000 000 0000 00, 0층"]],
   },
 ];
 
@@ -63,12 +70,13 @@ export default function Footer() {
             >
               Apgujeong
             </a>
-            <a
-              href="#admin"
+            {/* 실제 관리자 화면으로 연결한다 (예전에는 #admin 이라 아무 데도 가지 않았다) */}
+            <Link
+              to="/admin"
               className="rounded-[9999px] bg-[#161616] px-[22px] py-[11px] text-[13px] leading-[20px] font-medium tracking-[-0.33px] whitespace-nowrap text-white md:text-[14px]"
             >
               관리자페이지
-            </a>
+            </Link>
           </div>
 
           <div className="grid grid-cols-1 gap-[28px] md:grid-cols-2 md:gap-[32px]">
@@ -96,7 +104,7 @@ export default function Footer() {
           </div>
 
           <p className="text-[12px] leading-[20px] font-light tracking-[-0.3px] text-[#999] md:text-[13px]">
-            Copyrights ⓒ 압구정곱창. All rights reserved.
+            Copyrights ⓒ 0000. All rights reserved.
           </p>
         </div>
       </footer>
@@ -137,15 +145,15 @@ export default function Footer() {
 
               {/* Figma 70:1746 — bg #161616, px 28 / py 12, radius 9999 */}
               <Magnetic strength={0.3}>
-                <a
-                  href="#admin"
+                <Link
+                  to="/admin"
                   className="flex items-center justify-center rounded-[9999px] bg-[#161616] px-[28px] py-[12px] transition-colors duration-300 hover:bg-[#e61911]"
                 >
                   {/* Figma 70:1747 — Pretendard Medium 14 / lh 22 / -0.35 / 흰색 */}
                   <span className="text-[14px] leading-[22px] font-medium tracking-[-0.35px] whitespace-nowrap text-white">
                     관리자페이지
                   </span>
-                </a>
+                </Link>
               </Magnetic>
             </div>
 
@@ -197,7 +205,7 @@ export default function Footer() {
 
               {/* Figma 70:1774 — Pretendard Light 14 / lh 22 / -0.35 / #999 */}
               <p className="shrink-0 text-[14px] leading-[22px] font-light tracking-[-0.35px] whitespace-nowrap text-[#999]">
-                Copyrights ⓒ 압구정곱창. All rights reserved.
+                Copyrights ⓒ 0000. All rights reserved.
               </p>
             </div>
           </div>
