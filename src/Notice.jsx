@@ -6,6 +6,7 @@ import Tilt from "./Tilt.jsx";
 import { useBreakpoint } from "./useBreakpoint.js";
 import { listFeatured } from "./lib/notices.js";
 import { isSupabaseReady } from "./lib/supabase.js";
+import { asset } from "./lib/asset.js";
 
 /**
  * Figma: Frame 2095587710 (332:715) — x 120 / y 10000 / 1680 x 704
@@ -37,7 +38,7 @@ const PLACEHOLDER = [
     title:
       "압구정곱창 공지사항텍스트압구정곱창 공지사항텍스트압구정곱창 공지사항텍스트압구정곱창 공지사항텍스트",
     date: "2026.00.00",
-    image: "/images/notice/n1.png",
+    image: asset("/images/notice/n1.png"),
     // Figma 332:724 — h 181.33% / top -48.59%
     crop: { height: "181.33%", top: "-48.59%" },
   },
@@ -47,7 +48,7 @@ const PLACEHOLDER = [
     title:
       "압구정곱창 공지사항텍스트압구정곱창 공지사항텍스트압구정곱창 공지사항텍스트압구정곱창 공지사항텍스트",
     date: "2026.00.00",
-    image: "/images/notice/n2.png",
+    image: asset("/images/notice/n2.png"),
     // Figma 332:733 — h 181.33% / top 0.06%
     crop: { height: "181.33%", top: "0.06%" },
   },
@@ -57,7 +58,7 @@ const PLACEHOLDER = [
     title:
       "압구정곱창 공지사항텍스트압구정곱창 공지사항텍스트압구정곱창 공지사항텍스트압구정곱창 공지사항텍스트",
     date: "2026.00.00",
-    image: "/images/notice/n3.png",
+    image: asset("/images/notice/n3.png"),
     // Figma 332:742 — h 181.33% / top -7.59%
     crop: { height: "181.33%", top: "-7.59%" },
   },

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { DESIGN_W, useWidthScale } from "./useCanvasScale.js";
 import { useBreakpoint } from "./useBreakpoint.js";
+import { asset } from "./lib/asset.js";
 
 /**
  * Figma: Frame 2095587700 (332:701) — x 122 / y 9092 / 1680 x 708
@@ -44,9 +45,9 @@ const WHEEL_THRESHOLD = 60; // 이만큼 굴리면 한 칸 이동
  * image 는 임시 — 피그마에 지점별 사진이 없어 기존 에셋을 돌려 썼다.
  */
 const BRANCHES = [
-  { name: "성수동지점", image: "/images/collection/c3.png" },
-  { name: "압구정지점", image: "/images/franchise/store.png" },
-  { name: "서교동지점", image: "/images/collection/c5.png" },
+  { name: "성수동지점", image: asset("/images/collection/c3.png") },
+  { name: "압구정지점", image: asset("/images/franchise/store.png") },
+  { name: "서교동지점", image: asset("/images/collection/c5.png") },
 ];
 
 /**

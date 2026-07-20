@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Reveal, { RevealText } from "../Reveal.jsx";
 import { useBreakpoint } from "../useBreakpoint.js";
+import { asset } from "../lib/asset.js";
 
 /**
  * Figma: Frame 332:1457 — 와인 리스트 페이지의 커버플로우 슬라이드.
@@ -66,31 +67,31 @@ const WINES = [
     en: "Woodstock Collett Lane",
     ko: "우드스톡 콜렛레인 까버네쇼비뇽",
     price: "130,000원",
-    image: "/images/wine/w4.png",
+    image: asset("/images/wine/w4.png"),
   },
   {
     en: "Moët & Chandon Ice Impérial",
     ko: "모엣 샹동 아이스 앵페리얼",
     price: "150,000원",
-    image: "/images/wine/w1.png",
+    image: asset("/images/wine/w1.png"),
   },
   {
     en: "Jacob's Creek Sparkling Rosé",
     ko: "제이콥스 크릭 스파클링 로제",
     price: "90,000원",
-    image: "/images/wine/w2.png",
+    image: asset("/images/wine/w2.png"),
   },
   {
     en: "Dom Pérignon Luminous",
     ko: "돔 페리뇽 루미너스",
     price: "480,000원",
-    image: "/images/wine/w3.png",
+    image: asset("/images/wine/w3.png"),
   },
   {
     en: "Bottega Gold Prosecco",
     ko: "보테가 골드 프로세코",
     price: "120,000원",
-    image: "/images/wine/w5.png",
+    image: asset("/images/wine/w5.png"),
   },
 ];
 

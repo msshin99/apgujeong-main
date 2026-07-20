@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import Header from "./Header.jsx";
 import { DESIGN_H, DESIGN_W, useCanvasScale, useWidthScale } from "./useCanvasScale.js";
 import { useBreakpoint } from "./useBreakpoint.js";
+import { asset } from "./lib/asset.js";
 
 /**
  * Figma: Frame 2095588280 (332:2154) — 1920 x 1000
@@ -11,9 +12,9 @@ import { useBreakpoint } from "./useBreakpoint.js";
  * (scale 은 가로/세로 중 작은 쪽 기준 = contain → 스크롤 없이 한 화면에 다 들어감)
  */
 const TABS = [
-  { id: "flavor", label: "FLAVOR", image: "/images/figma/e.png" },
-  { id: "juicy", label: "JUICY", image: "/images/figma/d.png" },
-  { id: "sizzle", label: "SIZZLE", image: "/images/figma/c.png" },
+  { id: "flavor", label: "FLAVOR", image: asset("/images/figma/e.png") },
+  { id: "juicy", label: "JUICY", image: asset("/images/figma/d.png") },
+  { id: "sizzle", label: "SIZZLE", image: asset("/images/figma/c.png") },
 ];
 
 const HEAD = "RICH";

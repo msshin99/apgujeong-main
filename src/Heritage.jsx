@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import Tilt from "./Tilt.jsx";
 import Reveal, { RevealText } from "./Reveal.jsx";
+import { asset } from "./lib/asset.js";
 
 /**
  * Figma: Frame 1707488304 (332:631) — 1185 x 2002
@@ -51,7 +52,7 @@ const ROWS = [
     eyebrow: "0.1%의 엄격한 선별",
     title: "선별의 미학",
     desc: "전국 산지에서 매일 새벽, 육질과 곱의 밀도를 기준으로 상위 0.1%의 한우 곱창만을 엄선합니다. 타협하지 않는 원재료가 최고의 미식을 시작합니다.",
-    image: "/images/heritage/select.png",
+    image: asset("/images/heritage/select.png"),
     // Figma 332:649 — 300x292 박스 안에서 h 154.49% / left -24.37% / top -28.89% / w 150.53%
     frame: { width: 300, height: 292 },
     crop: {
@@ -66,7 +67,7 @@ const ROWS = [
     eyebrow: "72시간의 저온 숙성",
     title: "숙성의 시간",
     desc: "특제 과일 효소와 함께 72시간 동안 진행되는 저온 숙성 공법은, 곱창 본연의 고소한 풍미를 극대화하고 입안에서 녹아드는 부드러운 식감을 완성합니다.",
-    image: "/images/heritage/age.png",
+    image: asset("/images/heritage/age.png"),
     // Figma 332:659 — 300x340
     frame: { width: 300, height: 340 },
     crop: {
@@ -81,7 +82,7 @@ const ROWS = [
     eyebrow: "400℃의 불꽃 예술",
     title: "조리의 예술",
     desc: "초고온 화로에서 순식간에 구워내는 '겉바속촉'의 정점. 수분은 가두고 불향을 입혀, 마지막 한 점까지 온전한 미식의 즐거움을 경험하게 합니다.",
-    image: "/images/heritage/cook.png",
+    image: asset("/images/heritage/cook.png"),
     // Figma 332:668 — 299x309
     frame: { width: 299, height: 309 },
     crop: {

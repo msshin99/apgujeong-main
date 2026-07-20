@@ -1,3 +1,5 @@
+import { asset } from "../lib/asset.js";
+
 /**
  * 공지사항 데이터. 목록(NoticeBoard)과 상세(NoticeDetail)가 같은 원본을 본다.
  *
@@ -6,9 +8,9 @@
  * 목록에서 넘어온 글이 무엇이든 같은 형식으로 보이게 했다.
  */
 const IMAGES = [
-  { image: "/images/notice/n1.png", crop: { height: "181.33%", top: "-48.59%" } },
-  { image: "/images/notice/n2.png", crop: { height: "181.33%", top: "0.06%" } },
-  { image: "/images/notice/n3.png", crop: { height: "181.33%", top: "-7.59%" } },
+  { image: asset("/images/notice/n1.png"), crop: { height: "181.33%", top: "-48.59%" } },
+  { image: asset("/images/notice/n2.png"), crop: { height: "181.33%", top: "0.06%" } },
+  { image: asset("/images/notice/n3.png"), crop: { height: "181.33%", top: "-7.59%" } },
 ];
 
 /** Figma 332:1838~1844 — 문단 사이 24, 배열 하나가 한 문단(줄바꿈 포함) */

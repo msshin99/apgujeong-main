@@ -17,7 +17,11 @@
       "PowerShell(Get-NetTCPConnection -State Listen -LocalPort 5173,5174,5175 -ErrorAction SilentlyContinue | ForEach-Object { $p = Get-Process -Id $_.OwningProcess -ErrorAction SilentlyContinue; [PSCustomObject]@{ Port=$_.LocalPort; PID=$_.OwningProcess; Name=$p.ProcessName; Started=$p.StartTime } } | Sort-Object Port -Unique | Format-Table -AutoSize)",
       "PowerShell($c = Get-NetTCPConnection -State Listen -LocalPort 5173,5174,5175 -ErrorAction SilentlyContinue; if \\($c\\) { $ids = \\($c | Select-Object -ExpandProperty OwningProcess -Unique\\); Write-Output \"종료할 PID: $ids\"; Stop-Process -Id $ids -Force; Start-Sleep -Milliseconds 400 } else { Write-Output \"이미 비어 있음\" }; Get-NetTCPConnection -State Listen -LocalPort 5173,5174,5175 -ErrorAction SilentlyContinue | Measure-Object | Select-Object -ExpandProperty Count)",
       "PowerShell(cd c:\\\\Users\\\\A\\\\Desktop\\\\apgujeong-main; git ls-files | Select-String -Pattern \"^\\\\.env$|^\\\\.env\\\\.\" ; Write-Output \"---커밋된 파일 수---\"; \\(git ls-files | Measure-Object\\).Count)",
-      "PowerShell(cd c:\\\\Users\\\\A\\\\Desktop\\\\apgujeong-main; $env:BASE_PATH=\"/apgujeong/\"; npm run build 2>&1 | Select-String \"built in|error|dist/index\"; Remove-Item Env:\\\\BASE_PATH; Write-Output \"--- 404.html 생성 확인 ---\"; Test-Path dist\\\\404.html; Write-Output \"--- index.html 자산 경로 ---\"; Select-String -Path dist\\\\index.html -Pattern \"/apgujeong/\" | Select-Object -First 3 | ForEach-Object { $_.Line.Trim\\(\\) })"
+      "PowerShell(cd c:\\\\Users\\\\A\\\\Desktop\\\\apgujeong-main; $env:BASE_PATH=\"/apgujeong/\"; npm run build 2>&1 | Select-String \"built in|error|dist/index\"; Remove-Item Env:\\\\BASE_PATH; Write-Output \"--- 404.html 생성 확인 ---\"; Test-Path dist\\\\404.html; Write-Output \"--- index.html 자산 경로 ---\"; Select-String -Path dist\\\\index.html -Pattern \"/apgujeong/\" | Select-Object -First 3 | ForEach-Object { $_.Line.Trim\\(\\) })",
+      "PowerShell(gh --version 2>&1)",
+      "PowerShell(gh auth status 2>&1)",
+      "PowerShell(try { $r = Invoke-WebRequest -Uri \"https://msshin99.github.io/apgujeong-main/\" -UseBasicParsing -TimeoutSec 20; Write-Output \"HTTP $\\($r.StatusCode\\)\"; \\($r.Content -split \"`n\" | Select-String \"<title>|assets/index\"\\).Line.Trim\\(\\) } catch { Write-Output \"요청 실패: $\\($_.Exception.Message\\)\" })",
+      "Bash(BASE_PATH=/apgujeong-main/ npm run build)"
     ],
     "additionalDirectories": [
       "C:\\Users\\A\\Desktop\\Apgujeong\\public\\images\\hero"

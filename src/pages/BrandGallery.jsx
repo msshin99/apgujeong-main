@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { useBreakpoint } from "../useBreakpoint.js";
+import { asset } from "../lib/asset.js";
 
 /**
  * Figma: Frame 2095588281 (354:2421) — 1920 x 640
@@ -10,10 +11,10 @@ import { useBreakpoint } from "../useBreakpoint.js";
  * 화면 전체 폭을 쓰는 띠라서 컨테이너 폭(1680)에 가두지 않는다.
  */
 const PANELS = [
-  { id: "g1", image: "/images/brand/g1.png", alt: "테이블에 오르는 곱창 한 상" },
-  { id: "g2", image: "/images/brand/g2.png", alt: "마무리 시즈닝을 뿌리는 셰프" },
-  { id: "g3", image: "/images/brand/g3.png", alt: "숯불 화로" },
-  { id: "g4", image: "/images/brand/g4.png", alt: "압구정곱창 코스터와 잔" },
+  { id: "g1", image: asset("/images/brand/g1.png"), alt: "테이블에 오르는 곱창 한 상" },
+  { id: "g2", image: asset("/images/brand/g2.png"), alt: "마무리 시즈닝을 뿌리는 셰프" },
+  { id: "g3", image: asset("/images/brand/g3.png"), alt: "숯불 화로" },
+  { id: "g4", image: asset("/images/brand/g4.png"), alt: "압구정곱창 코스터와 잔" },
 ];
 
 const PANEL_H = 640; // Figma

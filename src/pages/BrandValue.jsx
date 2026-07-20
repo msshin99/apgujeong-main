@@ -2,6 +2,7 @@ import { useState } from "react";
 import Reveal, { RevealText } from "../Reveal.jsx";
 import { Magnetic } from "../Tilt.jsx";
 import { useBreakpoint } from "../useBreakpoint.js";
+import { asset } from "../lib/asset.js";
 
 /**
  * Figma: Frame 1707487843 (332:989)
@@ -25,28 +26,28 @@ const SLIDES = [
     point: "Point 01",
     title: "철저한 원육 선별",
     desc: "우리의 곱창은 단순히 음식을 넘어, 매일 아침 도축장에서부터 시작되는 엄격한 품질 관리를 통해 완성됩니다. 고객에게 가장 깨끗하고 신선한 한우 곱창만을 선보이겠다는 약속을 지키기 위해 우리는 매일 아침 끊임없이 노력합니다.",
-    image: "/images/brand/value1.png",
+    image: asset("/images/brand/value1.png"),
   },
   {
     id: "aging",
     point: "Point 02",
     title: "시간이 빚는 숙성",
     desc: "특제 과일 효소와 함께 저온에서 천천히 숙성시킵니다. 서두르지 않는 시간이 곱창 본연의 고소함을 끌어올리고, 입안에서 부드럽게 풀리는 식감을 완성합니다.",
-    image: "/images/brand/g2.png",
+    image: asset("/images/brand/g2.png"),
   },
   {
     id: "fire",
     point: "Point 03",
     title: "불을 다루는 기술",
     desc: "초고온 화로 위에서 겉은 바삭하고 속은 촉촉한 순간을 잡아냅니다. 숙련된 그릴러가 굽기의 정점을 판단해 가장 맛있는 상태로 테이블에 올립니다.",
-    image: "/images/brand/g3.png",
+    image: asset("/images/brand/g3.png"),
   },
   {
     id: "service",
     point: "Point 04",
     title: "끝까지 살피는 응대",
     desc: "메뉴를 내어드리는 순간부터 자리를 정리하는 순간까지, 손님의 속도에 맞춰 움직입니다. 세심한 응대가 미식의 시간을 온전하게 만듭니다.",
-    image: "/images/brand/g4.png",
+    image: asset("/images/brand/g4.png"),
   },
 ];
 
@@ -165,7 +166,7 @@ export default function BrandValue() {
                       className="group flex size-[44px] items-center justify-center rounded-[9999px] border border-solid border-[#e5e5ec] bg-white transition-colors duration-300 hover:border-[#222] hover:bg-[#222] md:size-[52px]"
                     >
                       <img
-                        src="/images/collection/arrow.svg"
+                        src={asset("/images/collection/arrow.svg")}
                         alt=""
                         aria-hidden
                         className="size-[20px] transition-[filter] duration-300 group-hover:invert md:size-[22px]"

@@ -3,6 +3,7 @@ import Footer from "../Footer.jsx";
 import { DESIGN_W, useWidthScale } from "../useCanvasScale.js";
 import { useBreakpoint } from "../useBreakpoint.js";
 import Reveal, { RevealText } from "../Reveal.jsx";
+import { asset } from "../lib/asset.js";
 
 /**
  * 하위 페이지 공통 뼈대.
@@ -23,7 +24,7 @@ const HERO_H = 560; // Figma 332:988
 export default function PageShell({
   label,
   title,
-  image = "/images/pages/hero.png",
+  image = asset("/images/pages/hero.png"),
   /* Figma 에서 사진이 프레임 안에 특정 위치로 잘려 들어간 경우가 있다.
      object-cover 는 기본이 정중앙이라, 그 어긋남만 여기서 보정한다 */
   imagePosition = "center",

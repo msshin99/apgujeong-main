@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import Reveal, { RevealText } from "./Reveal.jsx";
+import { asset } from "./lib/asset.js";
 
 /**
  * Figma: Frame 2095587696 (332:669) — 1200 x 1542
@@ -176,7 +177,7 @@ export default function Unrivaled({ compact = false }) {
       <div className="relative size-[1200px] shrink-0">
         {/* Figma 332:677 — 점선 원 궤도 */}
         <img
-          src="/images/unrivaled/orbit.svg"
+          src={asset("/images/unrivaled/orbit.svg")}
           alt=""
           aria-hidden
           className="absolute inset-0 size-full max-w-none"

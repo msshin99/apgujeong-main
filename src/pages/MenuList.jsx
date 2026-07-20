@@ -1,4 +1,5 @@
 import Reveal, { RevealText } from "../Reveal.jsx";
+import { asset } from "../lib/asset.js";
 
 /**
  * Figma: Frame 2095587816 (332:1148) — 1680 폭
@@ -22,10 +23,10 @@ const SECTIONS = [
     title: "메인 메뉴",
     sub: "진심을 담은 고집이 만들어낸 최상의 풍미와 서비스",
     items: [
-      { ko: "한우 곱창 구이", en: "Grilled Hanwoo Small Intestines", price: "30,000원", origin: "국내산 한우", weight: "200G", image: "/images/menu/m1.png" },
-      { ko: "한우 대창 구이", en: "Grilled Hanwoo Large Intestines", price: "30,000원", origin: "국내산 한우", weight: "200G", image: "/images/menu/m2.png" },
-      { ko: "한우 막창 구이", en: "Grilled Hanwoo Abomasum", price: "30,000원", origin: "국내산 한우", weight: "150G", image: "/images/menu/m3.png" },
-      { ko: "특창 구이", en: "Grilled Special Tripe", price: "33,000원", origin: "뉴질랜드산", weight: "150G", image: "/images/menu/m4.png" },
+      { ko: "한우 곱창 구이", en: "Grilled Hanwoo Small Intestines", price: "30,000원", origin: "국내산 한우", weight: "200G", image: asset("/images/menu/m1.png") },
+      { ko: "한우 대창 구이", en: "Grilled Hanwoo Large Intestines", price: "30,000원", origin: "국내산 한우", weight: "200G", image: asset("/images/menu/m2.png") },
+      { ko: "한우 막창 구이", en: "Grilled Hanwoo Abomasum", price: "30,000원", origin: "국내산 한우", weight: "150G", image: asset("/images/menu/m3.png") },
+      { ko: "특창 구이", en: "Grilled Special Tripe", price: "33,000원", origin: "뉴질랜드산", weight: "150G", image: asset("/images/menu/m4.png") },
     ],
   },
   {
@@ -34,10 +35,10 @@ const SECTIONS = [
     title: "사이드 메뉴",
     sub: "진심을 담은 고집이 만들어낸 최상의 풍미와 서비스",
     items: [
-      { ko: "한우 차돌박이", en: "Hanwoo Beef Brisket", price: "30,000원", origin: "국내산 한우", weight: "150G", image: "/images/menu/s1.png" },
-      { ko: "한우 곱창 전골", en: "Hanwoo Beef Small Intestine Hot Pot", price: "28,000원", origin: "국내산 한우", weight: "150G", image: "/images/menu/s2.png" },
-      { ko: "양곱창 볶음밥", en: "Tripe and Small Intestine Fried Rice", price: "10,000원", image: "/images/menu/s3.png" },
-      { ko: "볶음밥", en: "Fried Rice", price: "4,000원", image: "/images/menu/s4.png" },
+      { ko: "한우 차돌박이", en: "Hanwoo Beef Brisket", price: "30,000원", origin: "국내산 한우", weight: "150G", image: asset("/images/menu/s1.png") },
+      { ko: "한우 곱창 전골", en: "Hanwoo Beef Small Intestine Hot Pot", price: "28,000원", origin: "국내산 한우", weight: "150G", image: asset("/images/menu/s2.png") },
+      { ko: "양곱창 볶음밥", en: "Tripe and Small Intestine Fried Rice", price: "10,000원", image: asset("/images/menu/s3.png") },
+      { ko: "볶음밥", en: "Fried Rice", price: "4,000원", image: asset("/images/menu/s4.png") },
     ],
   },
   {
@@ -46,14 +47,14 @@ const SECTIONS = [
     title: "술 / 음료",
     sub: "진심을 담은 고집이 만들어낸 최상의 풍미와 서비스",
     items: [
-      { ko: "음료", en: "콜라 / 사이다 / 갈아만든 배 / 탄산수", price: "3,000원", image: "/images/menu/d1.png" },
-      { ko: "88 막걸리", en: "88 Korean Rice Wine", price: "10,000원", image: "/images/menu/d2.png" },
-      { ko: "소주", en: "참이슬 / 처음처럼 / 진로", price: "6,000원", image: "/images/menu/d3.png" },
-      { ko: "잭다니엘 하이볼", en: "Jack Daniel's Highball", price: "10,000원", image: "/images/menu/d4.png" },
-      { ko: "맥주", en: "카스 / 테라 / 클라우드", price: "6,000원 / 7,000원", image: "/images/menu/d5.png" },
-      { ko: "화요 25", en: "Hwayo 25", price: "30,000원", image: "/images/menu/d6.png" },
-      { ko: "우도 땅콩 막걸리", en: "Udo Peanut Makgeolli", price: "8,000원", image: "/images/menu/d7.png" },
-      { ko: "일품진로", en: "Ilpoom Jinro", price: "30,000원", image: "/images/menu/d8.png" },
+      { ko: "음료", en: "콜라 / 사이다 / 갈아만든 배 / 탄산수", price: "3,000원", image: asset("/images/menu/d1.png") },
+      { ko: "88 막걸리", en: "88 Korean Rice Wine", price: "10,000원", image: asset("/images/menu/d2.png") },
+      { ko: "소주", en: "참이슬 / 처음처럼 / 진로", price: "6,000원", image: asset("/images/menu/d3.png") },
+      { ko: "잭다니엘 하이볼", en: "Jack Daniel's Highball", price: "10,000원", image: asset("/images/menu/d4.png") },
+      { ko: "맥주", en: "카스 / 테라 / 클라우드", price: "6,000원 / 7,000원", image: asset("/images/menu/d5.png") },
+      { ko: "화요 25", en: "Hwayo 25", price: "30,000원", image: asset("/images/menu/d6.png") },
+      { ko: "우도 땅콩 막걸리", en: "Udo Peanut Makgeolli", price: "8,000원", image: asset("/images/menu/d7.png") },
+      { ko: "일품진로", en: "Ilpoom Jinro", price: "30,000원", image: asset("/images/menu/d8.png") },
     ],
   },
 ];

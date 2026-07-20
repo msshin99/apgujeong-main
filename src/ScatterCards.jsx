@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { DESIGN_W, useCanvasScale } from "./useCanvasScale.js";
 import { useBreakpoint } from "./useBreakpoint.js";
 import Reveal from "./Reveal.jsx";
+import { asset } from "./lib/asset.js";
 
 /**
  * 스크롤 연동 카드 정렬 섹션.
@@ -57,7 +58,7 @@ const CARDS = [
     id: "purity",
     title: "Purity",
     desc: "엄격한 위생 기준 아래 연육과 가공을 마치고 매장에서 바로 쓸 수 있게 패키징합니다",
-    image: "/images/cards/33516.png",
+    image: asset("/images/cards/33516.png"),
     // Figma 332:759 — 402x516 클립 안에 525x706 이미지를 left -62 / top -102 로
     crop: { left: -62, top: -102, width: 525, height: 706 },
     scatter: { cx: 949.82, rotate: 21.59 },
@@ -67,7 +68,7 @@ const CARDS = [
     id: "gourmet",
     title: "Gourmet",
     desc: "전문 주방장 없이도 누구나 원팩을 뜯어 5분 만에 최고급 곱창 구이를 완성합니다",
-    image: "/images/cards/33513.png",
+    image: asset("/images/cards/33513.png"),
     crop: null, // Figma 332:769 — object-cover
     scatter: { cx: 959.66, rotate: -7.52 },
     column: 3,
@@ -76,7 +77,7 @@ const CARDS = [
     id: "winwin",
     title: "Win-Win",
     desc: "전국 어디든 신선도 0℃를 유지하는 주 X회 콜드체인 시스템으로 안전하게 배송합니다",
-    image: "/images/cards/33517.png",
+    image: asset("/images/cards/33517.png"),
     // Figma 332:764 — left -11.95% / top -18.38% / w 130.1% / h 126.65%
     crop: {
       left: "-11.95%",
@@ -91,7 +92,7 @@ const CARDS = [
     id: "freshness",
     title: "Freshness",
     desc: "상위 10% 품질의 두툼하고 곱이 가득 찬 한우 및 수입 원육만을 엄선합니다",
-    image: "/images/cards/33518.png",
+    image: asset("/images/cards/33518.png"),
     crop: null, // Figma 332:753 — object-cover
     scatter: { cx: 960, rotate: 0 },
     column: 0,

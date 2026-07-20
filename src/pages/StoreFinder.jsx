@@ -2,6 +2,7 @@ import { useState } from "react";
 import Reveal, { RevealText } from "../Reveal.jsx";
 import { useBreakpoint } from "../useBreakpoint.js";
 import NaverMap from "./NaverMap.jsx";
+import { asset } from "../lib/asset.js";
 
 /**
  * Figma: Frame 2095587772 (332:1522) — 1920 x 1010
@@ -126,7 +127,7 @@ export default function StoreFinder() {
             className={`w-full ${isCompact ? "h-[clamp(280px,60vw,520px)]" : "h-full"}`}
             fallback={
               <img
-                src="/images/stores/map.png"
+                src={asset("/images/stores/map.png")}
                 alt="지점 위치 지도"
                 className={`w-full object-cover ${
                   isCompact ? "h-[clamp(280px,60vw,520px)]" : "h-full"
@@ -232,7 +233,7 @@ export default function StoreFinder() {
                     <div className="flex w-full flex-col gap-[8px] md:gap-[12px]">
                       <span className="flex items-start gap-[6px]">
                         <img
-                          src="/images/stores/pin.svg"
+                          src={asset("/images/stores/pin.svg")}
                           alt=""
                           aria-hidden
                           className="mt-[1px] size-[18px] shrink-0 md:size-[20px]"
@@ -243,7 +244,7 @@ export default function StoreFinder() {
                       </span>
                       <span className="flex items-center gap-[6px]">
                         <img
-                          src="/images/stores/phone.svg"
+                          src={asset("/images/stores/phone.svg")}
                           alt=""
                           aria-hidden
                           className="size-[18px] shrink-0 md:size-[20px]"
@@ -273,7 +274,7 @@ export default function StoreFinder() {
                           className="absolute inset-0 origin-left scale-x-0 bg-[#03c75a] transition-transform duration-400 ease-out group-hover/naver:scale-x-100"
                         />
                         <img
-                          src="/images/stores/naver.svg"
+                          src={asset("/images/stores/naver.svg")}
                           alt=""
                           aria-hidden
                           className="relative size-[24px] shrink-0 transition-transform duration-300 group-hover/naver:scale-110"
@@ -289,7 +290,7 @@ export default function StoreFinder() {
                         className="flex w-full cursor-not-allowed items-center justify-center gap-[8px] border border-solid border-[#e5e5ec] px-[12px] py-[14px] opacity-45 md:px-[28px] md:py-[16px]"
                       >
                         <img
-                          src="/images/stores/naver.svg"
+                          src={asset("/images/stores/naver.svg")}
                           alt=""
                           aria-hidden
                           className="size-[24px] shrink-0"

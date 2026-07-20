@@ -9,6 +9,7 @@ import StoreFinder from "./StoreFinder.jsx";
 import WineSlider from "./WineSlider.jsx";
 import NoticeBoard from "./NoticeBoard.jsx";
 import ContactForm from "./ContactForm.jsx";
+import { asset } from "../lib/asset.js";
 
 /**
  * 헤더 메뉴에 연결된 하위 페이지들.
@@ -32,7 +33,7 @@ export function Brand() {
 export function Menu() {
   return (
     // Figma 332:1146 — 메뉴 페이지 전용 대표 이미지
-    <PageShell label="Signature" title="메뉴 소개" image="/images/pages/menu-hero.png">
+    <PageShell label="Signature" title="메뉴 소개" image={asset("/images/pages/menu-hero.png")}>
       <MenuList />
     </PageShell>
   );
@@ -41,7 +42,7 @@ export function Menu() {
 export function WineList() {
   return (
     // Figma 332:1455 — 와인 리스트 페이지 전용 대표 이미지
-    <PageShell label="Pairing" title="와인 리스트" image="/images/pages/wine-hero.png">
+    <PageShell label="Pairing" title="와인 리스트" image={asset("/images/pages/wine-hero.png")}>
       <WineSlider />
     </PageShell>
   );
@@ -50,7 +51,7 @@ export function WineList() {
 export function Stores() {
   return (
     // Figma 332:1521 — 지점찾기 페이지 전용 대표 이미지
-    <PageShell label="Location" title="지점 찾기" image="/images/pages/stores-hero.png">
+    <PageShell label="Location" title="지점 찾기" image={asset("/images/pages/stores-hero.png")}>
       <StoreFinder />
     </PageShell>
   );
@@ -59,7 +60,7 @@ export function Stores() {
 export function NoticePage() {
   return (
     // Figma 332:1597 — 공지사항 페이지 전용 대표 이미지
-    <PageShell label="News" title="공지사항" image="/images/pages/notice-hero.png">
+    <PageShell label="News" title="공지사항" image={asset("/images/pages/notice-hero.png")}>
       <NoticeBoard />
     </PageShell>
   );
@@ -72,7 +73,7 @@ export function Contact() {
     <PageShell
       label="Contact Us"
       title="문의하기"
-      image="/images/pages/contact-hero.png"
+      image={asset("/images/pages/contact-hero.png")}
       imagePosition="center 45%"
     >
       <ContactForm />

@@ -2,6 +2,7 @@ import { useState } from "react";
 import Reveal, { RevealText } from "../Reveal.jsx";
 import { Magnetic } from "../Tilt.jsx";
 import { useBreakpoint } from "../useBreakpoint.js";
+import { asset } from "../lib/asset.js";
 
 /**
  * Figma: Frame 1707487804 (332:1094) — 1336 x 720, 가로 flex gap 60
@@ -27,7 +28,7 @@ const SLIDES = [
     title: ["일상의 휴식이 되는", "味(미)의 공간"],
     desc: ["단순한 식사를 넘어, 미각과 시각이 조화를 이루는 미니멀하고", "세련된 공간에서 깊은 풍미를 경험하세요."],
     tags: ["#미니멀리즘", "#식사경험", "#공간디자인"],
-    image: "/images/brand/space1.png",
+    image: asset("/images/brand/space1.png"),
   },
   // --- 아래 3장은 자리표시자 ---
   {
@@ -36,7 +37,7 @@ const SLIDES = [
     title: ["불에서 완성되는", "本(본)연의 맛"],
     desc: ["초고온 화로가 만들어내는 겉바속촉의 정점을,", "숙련된 그릴러의 손끝에서 경험하세요."],
     tags: ["#숯불", "#굽기", "#그릴러"],
-    image: "/images/brand/g3.png",
+    image: asset("/images/brand/g3.png"),
   },
   {
     id: "table",
@@ -44,7 +45,7 @@ const SLIDES = [
     title: ["한 잔이 더해지는", "格(격)의 시간"],
     desc: ["엄선한 와인과 곱창의 만남으로", "익숙한 한 끼를 특별한 자리로 바꿉니다."],
     tags: ["#와인페어링", "#테이블", "#다이닝"],
-    image: "/images/brand/g4.png",
+    image: asset("/images/brand/g4.png"),
   },
   {
     id: "care",
@@ -52,7 +53,7 @@ const SLIDES = [
     title: ["끝까지 살피는", "誠(성)의 서비스"],
     desc: ["가장 맛있는 순간에 맞춰 내어드리는", "세심한 응대로 미식의 시간을 완성합니다."],
     tags: ["#환대", "#응대", "#디테일"],
-    image: "/images/brand/g2.png",
+    image: asset("/images/brand/g2.png"),
   },
 ];
 
@@ -99,7 +100,7 @@ export default function BrandSpace() {
             className="group flex size-[44px] items-center justify-center rounded-[9999px] border border-solid border-[#e5e5ec] bg-white transition-colors duration-300 hover:border-[#222] hover:bg-[#222] md:size-[52px]"
           >
             <img
-              src="/images/collection/arrow.svg"
+              src={asset("/images/collection/arrow.svg")}
               alt=""
               aria-hidden
               className="size-[20px] transition-[filter] duration-300 group-hover:invert md:size-[22px]"

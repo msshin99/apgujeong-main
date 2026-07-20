@@ -3,6 +3,7 @@ import { DESIGN_W, useWidthScale } from "./useCanvasScale.js";
 import Reveal, { RevealText } from "./Reveal.jsx";
 import { Magnetic } from "./Tilt.jsx";
 import { useBreakpoint } from "./useBreakpoint.js";
+import { asset } from "./lib/asset.js";
 
 /**
  * Figma: Group 1707481198 (332:784) — 2536 x 866 (페이지 y 8106 기준)
@@ -60,13 +61,13 @@ const AUTO_SPEED = 0.16; // 초당 흘러가는 칸 수 — 무한 반복 슬라
 const DRAG_AREA_W = 4000; // 드래그를 받는 판의 폭 (화면보다 넓게)
 
 const CARDS = [
-  { id: "c1", image: "/images/collection/c1.png" },
-  { id: "c2", image: "/images/collection/c2.png" },
-  { id: "c3", image: "/images/collection/c3.png" },
-  { id: "c4", image: "/images/collection/c4.png" },
-  { id: "c5", image: "/images/collection/c5.png" },
-  { id: "c6", image: "/images/collection/c6.png" },
-  { id: "c7", image: "/images/collection/c7.png" },
+  { id: "c1", image: asset("/images/collection/c1.png") },
+  { id: "c2", image: asset("/images/collection/c2.png") },
+  { id: "c3", image: asset("/images/collection/c3.png") },
+  { id: "c4", image: asset("/images/collection/c4.png") },
+  { id: "c5", image: asset("/images/collection/c5.png") },
+  { id: "c6", image: asset("/images/collection/c6.png") },
+  { id: "c7", image: asset("/images/collection/c7.png") },
 ];
 
 /**
@@ -268,7 +269,7 @@ export default function Collection() {
               className="flex size-[44px] items-center justify-center rounded-[9999px] border border-solid border-[#e5e5ec] bg-white md:size-[52px]"
             >
               <img
-                src="/images/collection/arrow.svg"
+                src={asset("/images/collection/arrow.svg")}
                 alt=""
                 aria-hidden
                 className="size-[20px] md:size-[22px]"
@@ -380,7 +381,7 @@ export default function Collection() {
                     className="group flex size-[52px] items-center justify-center rounded-[9999px] border border-solid border-[#e5e5ec] bg-white transition-colors duration-300 hover:border-[#222] hover:bg-[#222]"
                   >
                     <img
-                      src="/images/collection/arrow.svg"
+                      src={asset("/images/collection/arrow.svg")}
                       alt=""
                       aria-hidden
                       className="size-[22px] transition-[filter] duration-300 group-hover:invert"
