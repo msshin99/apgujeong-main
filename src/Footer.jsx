@@ -1,7 +1,5 @@
-import { Link } from "react-router-dom";
 import { DESIGN_W, useWidthScale } from "./useCanvasScale.js";
 import Reveal from "./Reveal.jsx";
-import { Magnetic } from "./Tilt.jsx";
 import { useBreakpoint } from "./useBreakpoint.js";
 
 /**
@@ -9,7 +7,7 @@ import { useBreakpoint } from "./useBreakpoint.js";
  *
  *   상단에 1px 실선(#e5e5ec)
  *   안쪽 1580 폭, py 80, 세로 gap 40
- *     ├ 로고 + 관리자페이지 버튼 (좌우 배치)
+ *     ├ 로고 (시안에 있던 오른쪽 관리자페이지 버튼은 뺐다)
  *     └ INFO / TEL / ADRESS 3열(gap 56) + 저작권 (좌우 배치, 하단 정렬)
  */
 const INNER_W = 1580;
@@ -63,6 +61,8 @@ export default function Footer() {
     return (
       <footer className="w-full border-t border-solid border-[#e5e5ec] bg-black">
         <div className="mx-auto flex w-full max-w-[1120px] flex-col gap-[32px] px-[20px] py-[48px] font-pretendard sm:px-[24px] md:gap-[40px] md:px-[40px] md:py-[64px]">
+          {/* 관리자페이지 버튼은 두지 않는다 — 방문자에게 보일 이유가 없다.
+              관리자는 /admin 주소로 직접 들어간다 */}
           <div className="flex flex-wrap items-center justify-between gap-[16px]">
             <a
               href="#top"
@@ -70,13 +70,6 @@ export default function Footer() {
             >
               Apgujeong
             </a>
-            {/* 실제 관리자 화면으로 연결한다 (예전에는 #admin 이라 아무 데도 가지 않았다) */}
-            <Link
-              to="/admin"
-              className="rounded-[9999px] bg-[#161616] px-[22px] py-[11px] text-[13px] leading-[20px] font-medium tracking-[-0.33px] whitespace-nowrap text-white md:text-[14px]"
-            >
-              관리자페이지
-            </Link>
           </div>
 
           <div className="grid grid-cols-1 gap-[28px] md:grid-cols-2 md:gap-[32px]">
@@ -133,7 +126,9 @@ export default function Footer() {
             className="mx-auto flex flex-col items-end gap-[40px] py-[80px] font-pretendard"
             style={{ width: INNER_W }}
           >
-            {/* Figma 70:1716 — 로고 + 버튼 */}
+            {/* Figma 70:1716 — 로고.
+                오른쪽에 있던 관리자페이지 버튼은 뺐다. 방문자에게 보일 이유가 없고,
+                관리자는 /admin 주소로 직접 들어간다. */}
             <div className="flex w-full items-center justify-between">
               {/* Figma 70:1775 — Pretendard Bold 28 / lh 28 / -0.7 / 흰색 */}
               <a
@@ -142,19 +137,6 @@ export default function Footer() {
               >
                 Apgujeong
               </a>
-
-              {/* Figma 70:1746 — bg #161616, px 28 / py 12, radius 9999 */}
-              <Magnetic strength={0.3}>
-                <Link
-                  to="/admin"
-                  className="flex items-center justify-center rounded-[9999px] bg-[#161616] px-[28px] py-[12px] transition-colors duration-300 hover:bg-[#e61911]"
-                >
-                  {/* Figma 70:1747 — Pretendard Medium 14 / lh 22 / -0.35 / 흰색 */}
-                  <span className="text-[14px] leading-[22px] font-medium tracking-[-0.35px] whitespace-nowrap text-white">
-                    관리자페이지
-                  </span>
-                </Link>
-              </Magnetic>
             </div>
 
             {/* Figma 70:1748 — 정보 열 + 저작권, 하단 정렬 */}

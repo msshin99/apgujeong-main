@@ -27,7 +27,8 @@
       "Bash(perl -0pi -e 's/^import Header from \"\\\\.\\\\/Header\\\\.jsx\";\\\\n//m' src/HeroTabs.jsx)",
       "Bash(perl -0pi -e 's/^  const headerScale = useWidthScale\\\\\\(\\\\\\);\\\\n//m' src/HeroTabs.jsx)",
       "Bash(perl -0pi -e 's/import \\\\{ DESIGN_W, useWidthScale \\\\} from \"\\\\.\\\\.\\\\/useCanvasScale\\\\.js\";/import { useWidthScale } from \"..\\\\/useCanvasScale.js\";/' src/pages/PageShell.jsx)",
-      "Bash(perl -0pi -e 's/^const HEADER_H = 96; \\\\/\\\\/ Figma 335:2374\\\\n//m' src/pages/PageShell.jsx)"
+      "Bash(perl -0pi -e 's/^const HEADER_H = 96; \\\\/\\\\/ Figma 335:2374\\\\n//m' src/pages/PageShell.jsx)",
+      "Bash(perl -0pi -e 's/^import \\\\{ Link \\\\} from \"react-router-dom\";\\\\n//m; s/^import \\\\{ Magnetic \\\\} from \"\\\\.\\\\/Tilt\\\\.jsx\";\\\\n//m' src/Footer.jsx)"
     ],
     "additionalDirectories": [
       "C:\\Users\\A\\Desktop\\Apgujeong\\public\\images\\hero"
