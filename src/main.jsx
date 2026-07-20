@@ -26,7 +26,9 @@ function SiteChrome() {
 
 createRoot(document.getElementById("root")).render(
   <StrictMode>
-    <BrowserRouter>
+    {/* GitHub Pages 프로젝트 사이트에서는 주소가 /저장소이름/ 아래에서 시작한다.
+        BASE_URL 은 vite 가 base 설정에서 만들어 주는 값이라 로컬에서는 "/" 다. */}
+    <BrowserRouter basename={import.meta.env.BASE_URL}>
       {/* 페이지가 바뀌어도 유지되는 전역 요소.
           연출용 커서·스크롤 게이지는 브랜드 사이트에서만 쓴다.
           관리자 화면에서는 방해만 되므로 라우트 안쪽에 두어 켜지지 않게 했다 */}

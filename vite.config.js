@@ -3,6 +3,10 @@ import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 
 export default defineConfig({
+  /* GitHub Pages 프로젝트 사이트는 주소가 https://계정.github.io/저장소이름/ 이라
+     자산 경로 앞에 저장소 이름이 붙어야 한다. 그 값은 배포 워크플로가
+     BASE_PATH 로 넘겨 준다. 로컬에서는 "/" 라 아무 영향이 없다. */
+  base: process.env.BASE_PATH || "/",
   plugins: [react(), tailwindcss()],
   server: {
     /* 포트를 고정한다.
