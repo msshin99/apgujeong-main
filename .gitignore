@@ -1,0 +1,15 @@
+node_modules
+dist
+
+# 지도 키 등 환경변수는 커밋하지 않는다 (.env.example 만 공유)
+.env
+.env.local
+.env.*.local
+
+# Vercel CLI 작업 폴더
+.vercel
+
+# 에디터 · OS 부스러기
+.DS_Store
+Thumbs.db
+*.log

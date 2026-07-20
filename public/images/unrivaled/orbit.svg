@@ -1,0 +1,5 @@
+<svg preserveAspectRatio="none" width="100%" height="100%" overflow="visible" style="display: block;" viewBox="0 0 1201 1201" fill="none" xmlns="http://www.w3.org/2000/svg">
+<!-- Figma 332:677 — 점선 궤도. 궤도 위의 붉은 점(Ellipse 11 / 13)은
+     따로 회전시키기 위해 SVG 에서 빼고 Unrivaled.jsx 에서 렌더링한다. -->
+<path id="Vector" d="M1200.5 600.5C1200.5 269.129 931.871 0.5 600.5 0.5C269.129 0.5 0.5 269.129 0.5 600.5C0.5 931.871 269.129 1200.5 600.5 1200.5C931.871 1200.5 1200.5 931.871 1200.5 600.5Z" stroke="white" stroke-opacity="0.4" stroke-dasharray="10 10"/>
+</svg>
