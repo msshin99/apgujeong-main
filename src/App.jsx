@@ -1,3 +1,4 @@
+import StickyHeader from "./StickyHeader.jsx";
 import HeroTabs from "./HeroTabs.jsx";
 import ScatterCards from "./ScatterCards.jsx";
 import Masterpiece from "./Masterpiece.jsx";
@@ -11,6 +12,8 @@ import Footer from "./Footer.jsx";
 export default function App() {
   return (
     <main className="bg-white">
+      {/* 히어로 사진 위에 얹혔다가, 내려가면 검은 배경이 깔린다 */}
+      <StickyHeader variant="overlay" />
       <HeroTabs />
       <ScatterCards />
       <Masterpiece />

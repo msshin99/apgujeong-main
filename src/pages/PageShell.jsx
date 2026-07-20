@@ -1,6 +1,6 @@
-import Header from "../Header.jsx";
+import StickyHeader from "../StickyHeader.jsx";
 import Footer from "../Footer.jsx";
-import { DESIGN_W, useWidthScale } from "../useCanvasScale.js";
+import { useWidthScale } from "../useCanvasScale.js";
 import { useBreakpoint } from "../useBreakpoint.js";
 import Reveal, { RevealText } from "../Reveal.jsx";
 import { asset } from "../lib/asset.js";
@@ -17,7 +17,6 @@ import { asset } from "../lib/asset.js";
  * 홈은 헤더가 히어로 사진 위에 얹히지만 하위 페이지에는 사진이 없으므로
  * 검은 바 위에 같은 헤더를 올린다.
  */
-const HEADER_H = 96; // Figma 335:2374
 const TOP_GAP = 160; // 헤더 아래 여백 (Figma 332:984 y 256 - 헤더 96)
 const HERO_H = 560; // Figma 332:988
 
@@ -38,29 +37,9 @@ export default function PageShell({
 
   return (
     <div className="flex min-h-[100dvh] flex-col bg-white">
-      {/* Figma 332:835 — 하위 페이지 헤더. 흰 배경 + 하단 실선 #e5e5ec, 검은 글씨 */}
-      <div className="w-full border-b border-solid border-[#e5e5ec] bg-white">
-        {isCompact ? (
-          <div className="px-[20px] sm:px-[24px] md:px-[40px]">
-            <Header compact dark />
-          </div>
-        ) : (
-          // scale 은 레이아웃 높이를 바꾸지 않으므로 검은 바 높이를 직접 계산해 준다
-          <div
-            className="flex w-full justify-center overflow-hidden"
-            style={{ height: HEADER_H * scale }}
-          >
-            <div
-              className="origin-top shrink-0"
-              style={{ width: DESIGN_W, transform: `scale(${scale})` }}
-            >
-              <div className="mx-[120px]">
-                <Header dark />
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
+      {/* Figma 332:835 — 하위 페이지 헤더. 흰 배경 + 하단 실선 #e5e5ec, 검은 글씨.
+          스크롤해도 따라오도록 화면에 고정한다 */}
+      <StickyHeader variant="solid" />
 
       <main className="flex-1">
         {/* Figma 332:985 — 제목 블록 */}

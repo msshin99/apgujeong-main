@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import Header from "./Header.jsx";
-import { DESIGN_H, DESIGN_W, useCanvasScale, useWidthScale } from "./useCanvasScale.js";
+import { DESIGN_H, DESIGN_W, useCanvasScale } from "./useCanvasScale.js";
 import { useBreakpoint } from "./useBreakpoint.js";
 import { asset } from "./lib/asset.js";
 
@@ -39,8 +38,6 @@ export default function HeroTabs() {
 
   // 히어로는 한 화면(100dvh) 안에 다 들어가도록 캔버스를 contain
   const scale = useCanvasScale();
-  // 헤더는 캔버스와 달리 화면 상단에 붙어야 하므로 가로 폭만 기준으로 축소한다
-  const headerScale = useWidthScale();
   const { isCompact } = useBreakpoint();
 
   useEffect(() => {
@@ -135,27 +132,14 @@ export default function HeroTabs() {
         <div className="absolute inset-0 z-30 bg-[rgba(0,0,0,0.2)] lg:bg-[rgba(0,0,0,0.2)] max-lg:bg-[rgba(0,0,0,0.38)]" />
       </div>
 
-      {/* Figma 335:2374 — 헤더.
-          캔버스는 화면 높이에 맞춰 축소된 뒤 세로 중앙에 놓이므로, 그 안에 두면
-          창 비율에 따라 헤더가 아래로 밀린다. 캔버스 밖으로 빼서 화면 상단에 고정하고
-          가로 폭만 기준으로 축소한다. */}
-      {!isCompact && (
-        <div className="absolute top-0 left-0 z-50 flex w-full justify-center">
-          <div
-            className="origin-top shrink-0"
-            style={{ width: DESIGN_W, transform: `scale(${headerScale})` }}
-          >
-            <div className="mx-[120px]">
-              <Header />
-            </div>
-          </div>
-        </div>
-      )}
+      {/* 헤더는 이 섹션 밖(App.jsx 의 StickyHeader)에서 화면에 고정된다.
+          히어로 안에 두면 스크롤과 함께 위로 사라지기 때문이다. */}
 
       {/* 1200 미만 — 캔버스를 버리고 유동 레이아웃 */}
       {isCompact && (
         <div className="absolute inset-0 z-40 flex flex-col px-[20px] sm:px-[24px] md:px-[40px]">
-          <Header compact />
+          {/* 고정 헤더가 덮는 만큼 위를 비워 둔다 */}
+          <div aria-hidden className="h-[92px] shrink-0" />
 
           {/* 타이틀 — 화면 중앙 */}
           <div className="flex flex-1 items-center justify-center">
