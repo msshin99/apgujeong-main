@@ -36,26 +36,29 @@ const DOT_GRADIENT =
 const DOT_GLOW = "0 0 10px 0 rgba(255,85,78,0.9)"; // SVG feGaussianBlur(5) 근사
 
 /** Figma 332:681 / 686 / 691 / 696 */
+/* 네 문구의 길이를 비슷하게 맞췄다.
+   길이가 제각각이면 좁은 원 안에서 어떤 칸만 네 줄이 되고 마지막 줄에
+   글자 한두 개만 남아 흘러내리는 것처럼 보인다. */
 const CIRCLES = [
   {
     no: "01",
     label: "ORIGIN",
-    desc: "전국 산지를 직접 발로 뛰며 찾아낸 최상급 한우 생곱창만을 고집합니다. 타협하지 않는 원재료가 마스터피스의 첫 번째 기준입니다.",
+    desc: "전국 산지를 직접 찾아 고른 최상급 한우 생곱창만을 씁니다.",
   },
   {
     no: "02",
     label: "SECRET",
-    desc: "수만 번의 연구 끝에 탄생한 독자적인 저온 숙성 공법과 비법 소스는, 곱창 특유의 잡내를 완벽히 제거하고 풍미의 깊이를 한 차원 높여줍니다.",
+    desc: "독자적인 저온 숙성과 비법 소스로 잡내 없이 풍미를 살립니다.",
   },
   {
     no: "03",
     label: "SPACE",
-    desc: "단순한 식사 공간을 넘어 감각적인 인테리어와 조명, 음악이 어우러진 공간 미학을 제공합니다.",
+    desc: "감각적인 인테리어와 조명, 음악이 어우러진 공간을 만듭니다.",
   },
   {
     no: "04",
     label: "SERVICE",
-    desc: "전문 그릴 마스터의 세심한 조리와 정성스러운 서비스로 고객님의 미식 시간을 완성합니다. 당신을 향한 진정한 환대를 실천합니다.",
+    desc: "그릴 마스터의 세심한 조리로 미식의 시간을 완성합니다.",
   },
 ];
 
@@ -124,7 +127,7 @@ export default function Unrivaled({ compact = false }) {
                     {c.no}
                   </span>
                 </div>
-                <p className="text-[14px] leading-[22px] font-normal tracking-[-0.35px] text-[rgba(255,255,255,0.7)] md:text-[15px]">
+                <p className="text-[14px] leading-[22px] font-normal tracking-[-0.35px] break-keep text-[rgba(255,255,255,0.7)] md:text-[15px]">
                   {c.desc}
                 </p>
               </div>
@@ -243,8 +246,10 @@ export default function Unrivaled({ compact = false }) {
                 </span>
               </div>
 
-              {/* Figma 332:685 — Pretendard Regular 16 / lh 24 / -0.4 / 흰색 70% / 가운데 */}
-              <p className="w-full text-center text-[16px] leading-[24px] font-normal tracking-[-0.4px] text-[rgba(255,255,255,0.7)] transition-colors duration-500 group-hover:text-white">
+              {/* Figma 332:685 — Pretendard Regular 16 / lh 24 / -0.4 / 흰색 70% / 가운데.
+                  break-keep 은 단어 중간에서 줄이 끊기지 않게 한다.
+                  없으면 "완/벽히" 처럼 어절이 쪼개져 읽기 나쁘다. */}
+              <p className="w-full text-center text-[16px] leading-[24px] font-normal tracking-[-0.4px] break-keep text-[rgba(255,255,255,0.7)] transition-colors duration-500 group-hover:text-white">
                 {c.desc}
               </p>
             </div>
