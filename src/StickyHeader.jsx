@@ -11,39 +11,22 @@ import { useBreakpoint } from "./useBreakpoint.js";
  *               사진을 지나 내려가면 검은 배경이 깔린다.
  *   "solid"   — 하위 페이지. 흰 배경 + 아래 실선을 늘 유지한다.
  *
- * 아래로 내리는 동안에는 숨고, 위로 올리면 바로 나타난다.
- * 긴 페이지에서 헤더가 늘 화면을 덮고 있으면 답답한데,
- * 되돌아가려는 순간(위로 스크롤)에는 이미 준비돼 있어야 하기 때문이다.
+ * 어디까지 내려가든 화면 맨 위에 그대로 붙어 있는다.
+ * 바뀌는 것은 배경뿐이다 — 히어로 위에서는 투명하고, 내려가면 배경이 깔린다.
  */
 
 /** 이만큼 내려오면 배경을 깐다 */
 const SOLID_AT = 40;
-/** 이 지점을 지나야 숨기기 시작한다. 화면 맨 위에서는 늘 보인다 */
-const HIDE_AFTER = 160;
-/** 손떨림 정도의 스크롤에는 반응하지 않는다 */
-const DELTA = 6;
 
-function useScrollState() {
+function useScrolled() {
   const [scrolled, setScrolled] = useState(false);
-  const [hidden, setHidden] = useState(false);
 
   useEffect(() => {
-    let last = window.scrollY;
     let raf = 0;
-
     const update = () => {
       raf = 0;
-      const y = window.scrollY;
-      const diff = y - last;
-
-      setScrolled(y > SOLID_AT);
-
-      if (Math.abs(diff) > DELTA) {
-        setHidden(diff > 0 && y > HIDE_AFTER);
-        last = y;
-      }
+      setScrolled(window.scrollY > SOLID_AT);
     };
-
     const onScroll = () => {
       if (!raf) raf = requestAnimationFrame(update);
     };
@@ -56,13 +39,13 @@ function useScrollState() {
     };
   }, []);
 
-  return { scrolled, hidden };
+  return scrolled;
 }
 
 export default function StickyHeader({ variant = "overlay" }) {
   const scale = useWidthScale();
   const { isCompact } = useBreakpoint();
-  const { scrolled, hidden } = useScrollState();
+  const scrolled = useScrolled();
 
   /* fixed 로 띄우면 문서 흐름에서 빠져 그만큼 본문이 위로 밀린다.
      실제 높이를 재서 같은 크기의 자리를 대신 채워 준다. */
@@ -92,9 +75,7 @@ export default function StickyHeader({ variant = "overlay" }) {
     <>
       <div
         ref={barRef}
-        className={`fixed top-0 left-0 z-[120] w-full transition-[transform,background-color,backdrop-filter] duration-500 ease-out ${surface} ${
-          hidden ? "-translate-y-full" : "translate-y-0"
-        }`}
+        className={`fixed top-0 left-0 z-[120] w-full transition-colors duration-500 ease-out ${surface}`}
       >
         {isCompact ? (
           <div className="px-[20px] sm:px-[24px] md:px-[40px]">
