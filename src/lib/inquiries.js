@@ -24,19 +24,38 @@ async function adminClient() {
  * 근거가 이 기록뿐이라 반드시 함께 저장한다 (agree_sms 는 선택 동의).
  * 인자는 화면 쪽 표기(camelCase)로 받고 DB 칸 이름(snake_case)은 insert 안에서만 쓴다 —
  * 컬럼 이름이 밖으로 새지 않게 이 파일이 경계 역할을 한다.
- * agree_privacy 칸은 docs/supabase-setup.md 2-2 의 칸 추가가 선행돼야 한다.
+ *
+ * agree_privacy 칸은 docs/seo-setup.md · docs/supabase-setup.md 2-2 의 칸 추가가 선행돼야 한다.
+ * 다만 그 마이그레이션을 아직 안 돌린 상태에서 이 칸을 그냥 넣으면 42703 으로
+ * **문의가 100% 거절된다.** 동의 기록이 없는 것보다 문의 자체가 사라지는 쪽이
+ * 훨씬 나쁘므로(방문자는 원인 모를 실패만 본다), 칸이 없으면 빼고 한 번 더 보낸다.
+ * notices.js 가 is_featured 를 다루는 방식과 같은 규칙이다.
+ * 칸이 생기는 순간 자동으로 동의까지 함께 기록된다 — 배포 순서에 의존하지 않는다.
  */
 export async function submitInquiry({ name, phone, email, message, agreeSms, agreePrivacy }) {
   if (!isSupabaseReady) throw new Error("Supabase 가 설정되지 않았습니다.");
 
-  await restInsert("inquiries", {
-    name,
-    phone,
-    email,
-    message,
-    agree_sms: Boolean(agreeSms),
-    agree_privacy: Boolean(agreePrivacy),
-  });
+  const base = { name, phone, email, message, agree_sms: Boolean(agreeSms) };
+
+  try {
+    await restInsert("inquiries", { ...base, agree_privacy: Boolean(agreePrivacy) });
+  } catch (error) {
+    if (!isMissingAgreePrivacy(error)) throw error;
+
+    /* 운영자가 알아야 고칠 수 있다. 방문자에게는 아무 일도 없었던 것처럼 보인다 */
+    console.warn(
+      "[inquiries] inquiries.agree_privacy 칸이 없어 동의 기록 없이 저장했습니다. " +
+        "docs/seo-setup.md 의 칸 추가 마이그레이션을 실행하세요.",
+    );
+    await restInsert("inquiries", base);
+  }
+}
+
+/** 42703(없는 칸) 중에서도 agree_privacy 를 지목한 것만. 다른 칸 오류는 그대로 터뜨린다 */
+function isMissingAgreePrivacy(error) {
+  const code = error?.code ?? error?.details?.code;
+  const text = `${error?.message ?? ""} ${error?.details ?? ""} ${error?.hint ?? ""}`;
+  return (code === "42703" || code === "PGRST204") && text.includes("agree_privacy");
 }
 
 /* 화면이 실제로 쓰는 칸만. * 로 받으면 나중에 관리용 칸이 늘어날 때 조용히 같이 따라온다 */
