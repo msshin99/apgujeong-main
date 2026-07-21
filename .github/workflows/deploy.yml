@@ -25,7 +25,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
 
       # sharp 는 네이티브 바이너리를 쓴다. ubuntu-latest(x64) 에서는 package-lock.json 에

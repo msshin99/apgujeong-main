@@ -29,7 +29,12 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { createElement } from "react";
 import { renderToString } from "react-dom/server";
 import { StaticRouter } from "react-router-dom";
-import { createClient } from "@supabase/supabase-js";
+/* 빌드 시점 읽기는 화면 쪽 공개 경로와 같은 PostgREST 통로를 쓴다.
+   @supabase/supabase-js 를 여기서 부르면 realtime-js 가 딸려 오는데, 그게
+   Node 22 미만에서 native WebSocket 을 못 찾아 빌드를 통째로 죽인다.
+   프리렌더가 필요한 건 anon select 뿐이라 SDK 를 쓸 이유가 없다 —
+   SDK 는 세션·Storage 가 필요한 관리자 화면 전용이다. */
+import { isSupabaseReady, restSelect } from "../src/lib/rest.js";
 
 import { PRERENDER_ROUTES, SITE } from "../src/lib/seoData.js";
 import { buildJsonLd, resolveMeta, validateJsonLd } from "../src/lib/seo.js";
@@ -136,13 +141,18 @@ function log(line) {
  * DB 가 없다고 빌드가 실패하면 안 된다 — 초기 배포와 포크 클론이 그 상태다.
  * ============================================================ */
 
+/**
+ * 읽을 곳이 있으면 표식을, 없으면 null 을 준다.
+ *
+ * 예전에는 여기서 SDK 클라이언트를 만들었다. 지금은 rest.js 가 모듈 최상단에서
+ * 환경변수를 이미 읽어 두므로 만들 객체가 없다. 아래 함수들이 `if (!client)` 로
+ * 분기하던 모양은 그대로 두려고 표식만 돌려준다.
+ *
+ * 프리렌더는 로그아웃(anon) 상태로 읽는다. select 정책이 anon 에 열려 있지 않으면
+ * 에러가 아니라 **빈 배열**이 온다 — 그래서 아래에서 건수를 반드시 찍는다.
+ */
 function makeClient() {
-  const url = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || "";
-  const key = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || "";
-  if (!url || !key) return null;
-  /* 프리렌더는 로그아웃(anon) 상태로 읽는다. select 정책이 anon 에 열려 있지 않으면
-     에러가 아니라 **빈 배열**이 온다 — 그래서 아래에서 건수를 반드시 찍는다 */
-  return createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
+  return isSupabaseReady ? { ready: true } : null;
 }
 
 /**
@@ -153,18 +163,26 @@ async function loadSeoData(client) {
   const out = { settings: null, pages: new Map(), clusters: [], source: "static" };
   if (!client) return out;
 
-  const settings = await client.from("seo_settings").select("*").eq("id", 1).maybeSingle();
-  if (settings.error) {
-    log(`  ⓘ seo_settings 를 읽지 못했다(${settings.error.message}). seoData.js 로 진행한다.`);
+  try {
+    out.settings = await restSelect("seo_settings", { eq: { id: 1 }, maybeSingle: true });
+  } catch (error) {
+    log(`  ⓘ seo_settings 를 읽지 못했다(${error.message}). seoData.js 로 진행한다.`);
     return out;
   }
-  out.settings = settings.data ?? null;
 
-  const pages = await client.from("seo_pages").select("*");
-  if (!pages.error) for (const row of pages.data ?? []) out.pages.set(row.route, row);
+  /* 표가 아직 없으면 그 항목만 비우고 계속 간다 — 하나 없다고 전체를 정적으로
+     되돌리면, 설정만 넣어 둔 중간 상태에서 그 설정까지 버리게 된다 */
+  try {
+    for (const row of await restSelect("seo_pages")) out.pages.set(row.route, row);
+  } catch {
+    /* 무시 — seoData.js 의 정적 라우트로 채워진다 */
+  }
 
-  const clusters = await client.from("topic_clusters").select("*").order("sort_order");
-  if (!clusters.error) out.clusters = clusters.data ?? [];
+  try {
+    out.clusters = await restSelect("topic_clusters", { order: [["sort_order", "asc"]] });
+  } catch {
+    /* 무시 — 클러스터 없이도 페이지는 그려진다 */
+  }
 
   out.source = "supabase";
   return out;
@@ -188,23 +206,29 @@ async function loadNotices(client, vite) {
 
   if (client) {
     const ask = (columns) =>
-      client
-        .from("notices")
-        .select(columns)
-        .eq("is_public", true)
-        .order("published_at", { ascending: false })
-        .order("id", { ascending: false })
-        .limit(500);
+      restSelect("notices", {
+        columns,
+        eq: { is_public: true },
+        order: [
+          ["published_at", "desc"],
+          ["id", "desc"],
+        ],
+        limit: 500,
+      });
 
-    let { data, error } = await ask(SEO_COLS);
-    if (error?.code === "42703") {
-      log("  ⓘ notices 에 SEO 칸이 없다(docs/seo-setup.md 4번 미실행). 기본 칸만으로 진행한다.");
-      ({ data, error } = await ask(BASE_COLS));
+    try {
+      let rows;
+      try {
+        rows = await ask(SEO_COLS);
+      } catch (error) {
+        if (error?.code !== "42703") throw error;
+        log("  ⓘ notices 에 SEO 칸이 없다(docs/seo-setup.md 4번 미실행). 기본 칸만으로 진행한다.");
+        rows = await ask(BASE_COLS);
+      }
+      return { rows: rows.map(normalizeNotice), source: "supabase" };
+    } catch (error) {
+      log(`  ⓘ notices 를 읽지 못했다(${error.message}). 예비 데이터로 진행한다.`);
     }
-    if (!error && Array.isArray(data)) {
-      return { rows: data.map(normalizeNotice), source: "supabase" };
-    }
-    if (error) log(`  ⓘ notices 를 읽지 못했다(${error.message}). 예비 데이터로 진행한다.`);
   }
 
   /* 예비 데이터. 자리표시자 문구라 실제 글이 아니지만, 라우트 구조와 head 조립이
