@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { DESIGN_H, DESIGN_W, useCanvasScale } from "./useCanvasScale.js";
 import { useBreakpoint } from "./useBreakpoint.js";
+import Img from "./Img.jsx";
 import { asset } from "./lib/asset.js";
 
 /**
@@ -78,8 +79,11 @@ export default function HeroTabs() {
 
   /* 라벨 중 가장 긴 것의 폭을 재서 창 폭으로 고정한다.
      offsetWidth 는 transform(scale) 의 영향을 받지 않으므로 디자인 기준 px 가 그대로 나온다.
-     웹폰트가 늦게 로드되면 폭이 달라지므로 fonts.ready 이후 한 번 더 잰다. */
+     웹폰트가 늦게 로드되면 폭이 달라지므로 fonts.ready 이후 한 번 더 잰다.
+     compact 로 시작하면 측정 노드가 display:none 인 데스크톱 캔버스 안이라 0 이 나온다.
+     그래서 compact 동안에는 재지 않고, 창을 넓혀 분기가 바뀔 때 다시 잰다. */
   useEffect(() => {
+    if (isCompact) return;
     const measure = () => {
       const el = measureRef.current;
       if (!el) return;
@@ -88,7 +92,7 @@ export default function HeroTabs() {
     };
     measure();
     document.fonts?.ready.then(measure).catch(() => {});
-  }, []);
+  }, [isCompact]);
 
   const handleSelect = (i) => {
     if (i === activeIndex) return;
@@ -113,7 +117,7 @@ export default function HeroTabs() {
               key={tab.id}
               className={`absolute inset-0 overflow-hidden ${z}`}
             >
-              <img
+              <Img
                 // key 를 바꿔 재마운트 → 활성화될 때마다 리빌 모션 재생
                 key={`${tab.id}-${i === activeIndex ? activeIndex : "idle"}`}
                 alt=""
@@ -150,8 +154,11 @@ export default function HeroTabs() {
                 {/* 데스크톱과 같은 아래→위 교체. 폭은 em 기준으로 잡아 괄호가 밀리지 않는다 */}
                 <span className="relative block h-[1.15em] w-[4.6em] overflow-hidden">
                   {isSwapping && (
+                    // 빠져나가는 라벨은 화면에만 남기고 접근성 트리에서는 뺀다.
+                    // 안 그러면 스크린리더가 "RICH ( FLAVOR JUICY ) JOURNEY" 로 읽는다
                     <span
                       key={`m-out-${prev.id}-${activeIndex}`}
+                      aria-hidden
                       className="absolute inset-x-0 top-0 block animate-[textOutUp_620ms_cubic-bezier(0.76,0,0.24,1)_both] text-center"
                     >
                       {prev.label}
@@ -257,8 +264,11 @@ export default function HeroTabs() {
                       style={{ width: labelWidth || undefined }}
                     >
                       {isSwapping && (
+                        // 빠져나가는 라벨은 화면에만 남기고 접근성 트리에서는 뺀다.
+                        // 안 그러면 스크린리더가 "RICH ( FLAVOR JUICY ) JOURNEY" 로 읽는다
                         <span
                           key={`out-${prev.id}-${activeIndex}`}
+                          aria-hidden
                           className="absolute inset-x-0 top-0 block text-center animate-[textOutUp_620ms_cubic-bezier(0.76,0,0.24,1)_both]"
                         >
                           {prev.label}

@@ -6,6 +6,9 @@ import { useEffect, useRef } from "react";
  * 둘 다 감쇠 보간으로 커서를 따라가고, 벗어나면 원래 자리로 되돌아온다.
  * 마우스가 없는 환경(터치)과 모션을 줄인 설정에서는 아무것도 하지 않는다.
  */
+// 함수 "선언" 으로 두는 것이 중요하다. 호출은 전부 useEffect 안에서만 일어나므로
+// 프리렌더(Node)에서는 실행되지 않고, 두 컴포넌트 모두 children 을 그대로 감싸 내보낸다.
+// 기울기·이동은 ref 로 style.transform 을 직접 쓰는 방식이라 서버 출력에는 흔적이 남지 않는다.
 const canHover = () =>
   typeof window !== "undefined" &&
   window.matchMedia("(pointer: fine)").matches &&

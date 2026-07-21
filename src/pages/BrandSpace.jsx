@@ -2,6 +2,7 @@ import { useState } from "react";
 import Reveal, { RevealText } from "../Reveal.jsx";
 import { Magnetic } from "../Tilt.jsx";
 import { useBreakpoint } from "../useBreakpoint.js";
+import Img from "../Img.jsx";
 import { asset } from "../lib/asset.js";
 
 /**
@@ -187,10 +188,14 @@ export default function BrandSpace() {
           }}
         >
           {SLIDES.map((s, i) => (
-            <img
+            // 네 장이 항상 붙어 있어야 교차 페이드가 되므로 언마운트는 하지 않는다.
+            // 대신 첫 장만 먼저 받고 나머지는 미뤄서 초기 로딩을 가볍게 한다
+            <Img
               key={s.id}
               src={s.image}
               alt=""
+              loading={i === 0 ? "eager" : "lazy"}
+              decoding="async"
               className="absolute inset-0 size-full object-cover transition-opacity duration-700 ease-out"
               style={{ opacity: i === index ? 1 : 0 }}
             />

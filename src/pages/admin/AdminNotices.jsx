@@ -65,14 +65,25 @@ export default function AdminNotices() {
   const fileRef = useRef(null);
   const { toast, view: toasts } = useToast();
 
+  /* 불러오는 중에 화면을 떠날 수 있다. 돌아온 응답으로 사라진 화면을 건드리지 않게 표시해 둔다 */
+  const alive = useRef(true);
+
+  /* '이미지 제거'로 화면에서만 떼어 낸 경로. 저장하기 전에는 글이 아직 이 파일을 가리키고
+     있으므로, 저장이 실제로 끝난 뒤에야 "남은 파일"이라고 알려 줄 수 있다 */
+  const detached = useRef(null);
+
   const refresh = () =>
     listNotices({ includeHidden: true })
-      .then(setRows)
-      .catch((err) => fail(err, "list"))
-      .finally(() => setLoading(false));
+      .then((list) => alive.current && setRows(list))
+      .catch((err) => alive.current && fail(err, "list"))
+      .finally(() => alive.current && setLoading(false));
 
   useEffect(() => {
+    alive.current = true;
     refresh();
+    return () => {
+      alive.current = false;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -96,6 +107,7 @@ export default function AdminNotices() {
   const openNew = () => {
     setDraft(BLANK);
     setFile(null);
+    detached.current = null;
     setOpen(true);
   };
 
@@ -106,11 +118,14 @@ export default function AdminNotices() {
       author: row.author,
       /* 화면에는 2026.04.22 로 보이지만 date 입력칸은 2026-04-22 를 요구한다 */
       published_at: row.date.replaceAll(".", "-"),
-      body: row.body.join("\n\n"),
+      /* 문단으로 쪼갠 body 를 다시 이어 붙이면 운영자가 넣은 줄 간격이 조용히 바뀐다.
+         원본(bodyRaw)이 있으면 그대로 열어 손대지 않은 부분은 그대로 남게 한다 */
+      body: row.bodyRaw || row.body.join("\n\n"),
       is_public: row.isPublic,
       image_path: row.imagePath,
     });
     setFile(null);
+    detached.current = null;
     setOpen(true);
   };
 
@@ -118,9 +133,16 @@ export default function AdminNotices() {
     e.preventDefault();
     setBusy(true);
 
+    /* 방금 올린 파일. 저장이 끝나기 전에 실패하면 아무 글도 이 파일을 가리키지 않아
+       Storage 에만 남는다. 지울 방법이 화면에 없으므로 경로라도 알려 준다 */
+    let uploaded = null;
+
     try {
       let imagePath = draft.image_path;
-      if (file) imagePath = await uploadNoticeImage(file);
+      if (file) {
+        uploaded = await uploadNoticeImage(file);
+        imagePath = uploaded;
+      }
 
       const fields = {
         title: draft.title.trim(),
@@ -133,11 +155,32 @@ export default function AdminNotices() {
 
       if (draft.id) await updateNotice(draft.id, fields);
       else await createNotice(fields);
+      uploaded = null; // 글이 이 파일을 가리키게 됐으니 더 이상 고아가 아니다
+
+      /* 저장이 끝난 지금부터 글은 새 경로(또는 빈 값)를 가리킨다.
+         그래서 여기서부터가 이전 파일이 정말 아무 데서도 안 쓰이는 시점이다.
+         저장 전에 알리면 창을 닫거나 실패했을 때 멀쩡한 글의 사진을 지우게 된다 */
+      const orphan =
+        detached.current ||
+        (draft.image_path && draft.image_path !== imagePath ? draft.image_path : null);
+      if (orphan) {
+        console.warn(
+          `[notices] 이전 이미지는 Storage 에 남습니다 — 수동 삭제 경로: ${orphan}`,
+        );
+        toast(`이전 이미지 파일은 서버에 남습니다: ${orphan}`);
+      }
+      detached.current = null;
 
       await refresh();
       setOpen(false);
       toast(draft.id ? "공지를 수정했습니다." : "공지를 등록했습니다.");
     } catch (err) {
+      if (uploaded) {
+        console.warn(
+          `[notices] 저장에 실패해 올라간 이미지만 남았습니다 — 수동 삭제 경로: ${uploaded}`,
+        );
+        toast(`올라간 이미지 파일이 서버에 남았습니다: ${uploaded}`, "error");
+      }
       fail(err, "save");
     } finally {
       setBusy(false);
@@ -147,9 +190,11 @@ export default function AdminNotices() {
   const onDelete = async (row) => {
     if (!window.confirm(`"${row.title}"\n\n이 공지를 삭제할까요? 되돌릴 수 없습니다.`)) return;
     try {
-      await deleteNotice(row.id, row.imagePath);
+      /* 글은 지웠는데 사진만 남는 경우가 있다. 남은 경로를 알려 두면 나중에 정리할 수 있다 */
+      const leftover = await deleteNotice(row.id, row.imagePath);
       await refresh();
-      toast("삭제했습니다.");
+      if (leftover) toast(`글은 지웠지만 이미지 파일이 남았습니다: ${leftover}`, "error");
+      else toast("삭제했습니다.");
     } catch (err) {
       fail(err, "delete");
     }
@@ -172,17 +217,43 @@ export default function AdminNotices() {
   /**
    * 메인 페이지에 실을 글 고르기.
    * 자리는 3개뿐이라, 다 찼는데 또 고르면 이유를 알려 주고 막는다.
+   *
+   * 이 규칙(3개 상한 · 비공개 글 제외)은 화면에서만 센다. 관리자 창을 두 개 띄우면
+   * 각자 자기 화면 숫자만 보고 눌러 상한을 넘길 수 있다.
+   * 제대로 된 상한은 DB 쪽 제약(트리거 등)으로 걸어야 하고, 여기서는 그때까지
+   * 쓰기 직전에 서버 상태를 다시 세어 어긋날 틈을 최대한 좁힌다.
    */
   const featured = rows.filter((r) => r.isFeatured);
 
   const toggleFeatured = async (row) => {
-    if (!row.isFeatured && featured.length >= FEATURED_LIMIT) {
-      toast(`메인에는 ${FEATURED_LIMIT}개까지만 넣을 수 있습니다. 먼저 하나를 빼 주세요.`, "error");
-      return;
-    }
-    if (!row.isFeatured && !row.isPublic) {
-      toast("비공개 글은 메인에 넣을 수 없습니다. 먼저 공개해 주세요.", "error");
-      return;
+    if (!row.isFeatured) {
+      let fresh;
+      try {
+        fresh = await listNotices({ includeHidden: true });
+      } catch (err) {
+        fail(err, "featured");
+        return;
+      }
+      if (!alive.current) return;
+      setRows(fresh);
+
+      const current = fresh.find((r) => r.id === row.id);
+      if (!current) {
+        toast("이미 지워진 글입니다.", "error");
+        return;
+      }
+      if (current.isFeatured) return; // 다른 창에서 이미 올려 두었다
+      if (!current.isPublic) {
+        toast("비공개 글은 메인에 넣을 수 없습니다. 먼저 공개해 주세요.", "error");
+        return;
+      }
+      if (fresh.filter((r) => r.isFeatured).length >= FEATURED_LIMIT) {
+        toast(
+          `메인에는 ${FEATURED_LIMIT}개까지만 넣을 수 있습니다. 먼저 하나를 빼 주세요.`,
+          "error",
+        );
+        return;
+      }
     }
 
     setRows((list) =>
@@ -413,8 +484,12 @@ export default function AdminNotices() {
                 <input type="text" value={draft.author} onChange={set("author")} className={INPUT} />
               </Field>
 
-              <Field label="대표 이미지" hint="목록·상세에 함께 쓰입니다">
-            <div
+              <Field label="대표 이미지" hint="목록·상세에 함께 쓰입니다" htmlFor="notice-image">
+            {/* 진짜 file 입력칸은 숨겨 두고 이 칸이 대신 눌린다.
+                그래서 이 칸 자체가 버튼이어야 키보드만으로도 사진을 고를 수 있다 */}
+            <button
+              id="notice-image"
+              type="button"
               onClick={() => fileRef.current?.click()}
               onDragOver={(e) => {
                 e.preventDefault();
@@ -427,7 +502,7 @@ export default function AdminNotices() {
                 const dropped = e.dataTransfer.files?.[0];
                 if (dropped?.type.startsWith("image/")) setFile(dropped);
               }}
-              className={`flex cursor-pointer flex-col items-center justify-center gap-[10px] rounded-[10px] border border-dashed p-[14px] transition-colors duration-150 ${
+              className={`flex w-full cursor-pointer flex-col items-center justify-center gap-[10px] rounded-[10px] border border-dashed p-[14px] transition-colors duration-150 ${
                 dragging
                   ? "border-[#e61911] bg-[#fff5f4]"
                   : "border-[#dcdce2] bg-[#fafafb] hover:border-[#1a1a1e]"
@@ -445,15 +520,15 @@ export default function AdminNotices() {
                       </span>
                     </>
                   ) : (
-                    <div className="flex flex-col items-center gap-[7px] py-[22px] text-[#b0b0b8]">
+                    <span className="flex flex-col items-center gap-[7px] py-[22px] text-[#b0b0b8]">
                       <IconImage />
                       <span className="text-[13px] text-[#8a8a93]">
                         끌어다 놓거나 클릭해서 선택
                       </span>
                       <span className="text-[11px] text-[#b0b0b8]">권장 1088 × 600</span>
-                    </div>
+                    </span>
                   )}
-                </div>
+                </button>
                 <input
                   ref={fileRef}
                   type="file"
@@ -465,6 +540,9 @@ export default function AdminNotices() {
                   <button
                     type="button"
                     onClick={() => {
+                      /* 아직 화면에서만 뗀 상태다. 저장하기 전에는 글이 여전히 이 파일을
+                         가리키므로, 경로만 기억해 두고 알리는 건 저장이 끝난 뒤로 미룬다 */
+                      if (draft.image_path) detached.current = draft.image_path;
                       setFile(null);
                       setDraft((d) => ({ ...d, image_path: null }));
                       if (fileRef.current) fileRef.current.value = "";

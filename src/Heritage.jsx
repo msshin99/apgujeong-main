@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import Tilt from "./Tilt.jsx";
 import Reveal, { RevealText } from "./Reveal.jsx";
+import Img from "./Img.jsx";
 import { asset } from "./lib/asset.js";
 
 /**
@@ -221,9 +222,12 @@ export default function Heritage({ compact = false }) {
                       height: row.frame.height * (0.64),
                     }}
                   >
-                    <img
+                    <Img
                       src={row.image}
                       alt=""
+                      // 장식용 3D 아이콘이라 첫 화면 로딩을 붙잡을 이유가 없다
+                      loading="lazy"
+                      decoding="async"
                       className="absolute max-w-none object-cover"
                       style={row.crop}
                     />
@@ -259,23 +263,34 @@ export default function Heritage({ compact = false }) {
       {/* Figma 332:632 — w 871, gap 24, 가운데 정렬 */}
       <div className="flex w-[871px] flex-col items-start gap-[24px] text-center">
         {/* Figma 332:633 — Pretendard Medium 20 / lh 30 / -0.5 / 흰색 */}
-        <p className="w-full text-[20px] leading-[30px] font-medium tracking-[-0.5px] text-white">
-          더 이상의 곱창은 없다, 절대적 미학의 시작
-        </p>
+        {/* 다른 섹션 헤더와 같은 등장 리듬을 쓴다 — 여기만 멈춰 있으면 튄다 */}
+        <Reveal className="w-full" y={16} duration={600}>
+          <p className="w-full text-[20px] leading-[30px] font-medium tracking-[-0.5px] text-white">
+            더 이상의 곱창은 없다, 절대적 미학의 시작
+          </p>
+        </Reveal>
 
         {/* Figma 332:634 — gap 16 */}
         <div className="flex w-full flex-col items-start gap-[16px]">
           {/* Figma 332:635 — Pretendard Bold 60 / lh 80 / -1.5 / 흰색 / uppercase */}
           <h2 className="w-full text-[60px] leading-[80px] font-bold tracking-[-1.5px] text-white uppercase">
-            The Art of Korean Heritage
+            {/* 줄바꿈이 일어나는 영문 제목이라 단어 단위로 쪼갠다 */}
+            <RevealText
+              lines={["The Art of Korean Heritage"]}
+              unit="word"
+              step={70}
+              delay={80}
+            />
           </h2>
           {/* Figma 332:636 — Pretendard Regular 18 / lh 26 / -0.45 / 흰색 60% / 2줄 */}
-          <p className="w-full text-[18px] leading-[26px] font-normal tracking-[-0.45px] text-[rgba(255,255,255,0.6)]">
-            수 세기를 이어온 미식의 뿌리를 오늘날의 세련된 다이닝으로
-            재해석하여, 당신의 테이블 위에
-            <br />
-            한국 미식의 새로운 이정표를 세웁니다.
-          </p>
+          <Reveal className="w-full" delay={320} y={16} duration={600}>
+            <p className="w-full text-[18px] leading-[26px] font-normal tracking-[-0.45px] text-[rgba(255,255,255,0.6)]">
+              수 세기를 이어온 미식의 뿌리를 오늘날의 세련된 다이닝으로
+              재해석하여, 당신의 테이블 위에
+              <br />
+              한국 미식의 새로운 이정표를 세웁니다.
+            </p>
+          </Reveal>
         </div>
       </div>
 
@@ -345,9 +360,12 @@ export default function Heritage({ compact = false }) {
                     className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 overflow-hidden"
                     style={row.frame}
                   >
-                    <img
+                    <Img
                       src={row.image}
                       alt=""
+                      // 장식용 3D 아이콘이라 첫 화면 로딩을 붙잡을 이유가 없다
+                      loading="lazy"
+                      decoding="async"
                       className="absolute max-w-none object-cover"
                       style={row.crop}
                     />

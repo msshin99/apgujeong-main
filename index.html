@@ -3,21 +3,88 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>압구정곱창</title>
+
+    <!--
+      아래 두 마커 사이는 scripts/prerender.mjs 가 **라우트마다 통째로 갈아 끼운다.**
+      (제목·설명·키워드·canonical·robots·Open Graph·트위터 카드·JSON-LD)
+
+      그래서 여기 적힌 값은 "프리렌더되지 않은 화면" 의 기본값이다 — 즉
+      dist/404.html(모르는 주소·관리자 화면)과 개발 서버에서만 보인다.
+      실제 페이지의 메타는 src/lib/seoData.js 와 Supabase 의 seo_pages 가 정한다.
+
+      ⚠ 마커 주석을 지우면 프리렌더가 자리를 못 찾아 빌드가 실패한다. 남겨 둘 것.
+    -->
+    <!-- prerender:head:start -->
+    <title>압구정곱창 | 한우 곱창 전문 다이닝</title>
     <meta
       name="description"
-      content="진심을 담은 고집이 만들어낸 최상의 풍미와 서비스. 압구정곱창입니다."
+      content="진심을 담은 고집이 만들어낸 최상의 풍미와 서비스. 상위 0.1%의 한우 곱창을 72시간 저온 숙성해 400℃ 화로에서 구워내는 압구정곱창입니다."
     />
+    <meta name="robots" content="index,follow" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="압구정곱창" />
+    <meta property="og:title" content="압구정곱창 | 한우 곱창 전문 다이닝" />
+    <meta
+      property="og:description"
+      content="진심을 담은 고집이 만들어낸 최상의 풍미와 서비스. 상위 0.1%의 한우 곱창을 72시간 저온 숙성해 400℃ 화로에서 구워내는 압구정곱창입니다."
+    />
+    <meta property="og:locale" content="ko_KR" />
+    <meta name="twitter:card" content="summary" />
+    <!--
+      canonical·og:url·og:image 는 여기에 두지 않는다.
+      배포 주소(origin)가 정해지기 전에 적으면 틀린 canonical 이 되는데,
+      틀린 canonical 은 없는 canonical 보다 훨씬 나쁘다.
+      프리렌더가 SITE_ORIGIN(또는 seo_settings.site_url)을 받으면 그때 붙인다.
+    -->
+    <!-- prerender:head:end -->
 
-    <!-- 본문·제목 모두 Pretendard 로 통일 -->
+    <!--
+      파비콘. 선언이 없으면 브라우저가 매 페이지마다 /favicon.ico 를 멋대로 찾아
+      404 를 한 번씩 만든다(지금 상태). SVG 를 먼저 걸고, SVG 아이콘을 모르는
+      구형 브라우저(Safari 14 미만 등)를 위해 같은 파일을 type 없이 한 번 더 건다.
+      .ico/.png 를 굽지 않는 이유는 public/favicon.svg 주석에 적어 두었다.
+      경로를 "/" 로 적어도 GitHub Pages 하위경로 배포에서 깨지지 않는다 —
+      vite 가 index.html 의 절대경로 자산을 base 기준으로 고쳐 주고,
+      prerender 는 마커 사이만 갈아 끼우므로 이 줄은 모든 라우트에 그대로 복사된다.
+    -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" href="/favicon.svg" sizes="any" />
+
+    <!--
+      본문·제목 모두 Pretendard. @font-face 선언은 src/index.css 안에 있고
+      (public/fonts/pretendard/ 의 가변 dynamic subset 92샤드), vite 가 그걸
+      이미 render-blocking 인 메인 CSS 한 파일에 합쳐 준다 → 추가 요청 0회.
+      예전의 jsDelivr <link> 는 지웠다. 통짜 woff2 4개 = 3,092,480 B 였다.
+
+      preload 는 **딱 두 개만** 건다. 여기서 욕심을 내면 이 작업의 이득이 사라진다.
+      전 라우트 공통 샤드는 81~91 로 합 286KB 인데 그걸 다 preload 하면
+      "필요한 것만 받는다"는 dynamic subset 설계를 스스로 깨는 셈이다.
+        · Pretendard 샤드 91 — 라틴·숫자·문장부호 + 상용 한글 음절(가·고·기·다·로·리·
+          사·스·시·이·인·지·하)이 들어 있어 19개 라우트가 예외 없이 요청한다.
+          투기가 아니라 확정이라 preload 값이 있다.
+        · Shippori Mincho 700 — 히어로 <h1>(src/HeroTabs.jsx)이 쓰는 최대 글자, LCP 후보다.
+          500 은 스크롤 아래 ScatterCards 라 걸지 않는다.
+      crossorigin 은 동일 출처여도 **필수**다. 폰트는 CORS 모드로 요청되므로
+      빠뜨리면 preload 가 재사용되지 않고 같은 파일을 두 번 받는다(개악).
+    -->
     <link
-      rel="stylesheet"
-      as="style"
+      rel="preload"
+      as="font"
+      type="font/woff2"
       crossorigin
-      href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css"
+      href="/fonts/pretendard/PretendardVariable.subset.91.woff2"
+    />
+    <link
+      rel="preload"
+      as="font"
+      type="font/woff2"
+      crossorigin
+      href="/fonts/shippori-mincho-latin-700.woff2"
     />
   </head>
   <body>
+    <!-- 프리렌더가 이 빈 div 안에 renderToString 결과를 넣는다.
+         비어 있는 상태 그대로가 SPA 껍데기(dist/404.html)다 -->
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>

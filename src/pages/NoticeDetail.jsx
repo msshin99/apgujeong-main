@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import PageShell from "./PageShell.jsx";
 import Reveal, { RevealText } from "../Reveal.jsx";
-import { bumpViews, getNotice } from "../lib/notices.js";
+import Img from "../Img.jsx";
+import { bumpViews, getNotice, seededNotice } from "../lib/notices.js";
 
 /**
  * Figma: Frame 1707486793 (332:1819) — x 320 / 1280 x 672
@@ -35,10 +36,57 @@ function Meta({ label, value }) {
   );
 }
 
+/**
+ * 화면이 쓰는 글 모양(notices.js 의 toView 결과)을 SEO 계약의 이름으로 옮긴다.
+ *
+ * `seo.js` 는 DB 칼럼 이름(seo_title / published_at / og_path)을 그대로 읽도록 짜여 있다.
+ * 프리렌더 스크립트가 Supabase 행을 그대로 넘기기 때문인데, 화면 쪽은 이미 다듬어진
+ * 모양을 쓰고 있어 여기서 한 번 맞춰 준다. **양쪽이 같은 함수로 계산되게 하는 것이 목적** 이라
+ * 값을 새로 만들지 않고 이름만 바꾼다.
+ */
+function toSeoNotice(notice) {
+  if (!notice) return null;
+  return {
+    id: notice.id,
+    title: notice.detailTitle,
+    body: notice.body,
+    author: notice.author,
+    /* 화면용 날짜는 2026.04.22 인데 schema.org 의 datePublished 는 ISO 여야 한다 */
+    published_at: String(notice.date || "").replace(/\./g, "-"),
+    /* og:image 는 **항상 공개 URL 일 때만** 쓴다. 저장소 버킷을 비공개로 돌리면
+       image 가 만료되는 서명 URL(?token=…)이 되는데, 크롤러는 로그인하지 않으므로
+       그런 주소를 내보내면 이미지 오류만 남는다. 물음표가 붙어 있으면 넘기지 않는다 */
+    og_path: notice.image && !String(notice.image).includes("?") ? notice.image : "",
+  };
+}
+
+/**
+ * 한 방문에 한 번만 세도록 표시해 두고, 이미 셌으면 false 를 돌려준다.
+ * 시크릿 모드나 저장소가 막힌 환경에서는 예외가 나므로 조용히 넘긴다.
+ */
+function markViewed(id) {
+  try {
+    const key = `notice-viewed:${id}`;
+    if (sessionStorage.getItem(key)) return false;
+    sessionStorage.setItem(key, "1");
+  } catch {
+    /* 저장소를 못 쓰면 ref 잠금만으로 만족한다 */
+  }
+  return true;
+}
+
 export default function NoticeDetail() {
   const { id } = useParams();
-  const [notice, setNotice] = useState(null);
-  const [state, setState] = useState("loading"); // loading | ready | missing | error
+  /* 프리렌더는 effect 를 돌리지 않는다. 씨앗이 있으면 첫 렌더부터 완성된 글을 그려서
+     정적 HTML 에 본문이 실리게 한다. 브라우저에서는 언제나 null 이라 종전과 같다 */
+  const seed = seededNotice(id);
+  const [notice, setNotice] = useState(seed);
+  const [state, setState] = useState(seed ? "ready" : "loading"); // loading | ready | missing | error
+
+  /* RPC 자체는 익명이고 서버에서 조이는 장치가 없다. 새로고침만 반복해도 숫자가
+     부풀고, 개발 중에는 StrictMode 가 effect 를 두 번 돌린다. 막을 수는 없으니
+     최소한 우리 쪽에서 글 하나당 한 번만 올리도록 예의만 지킨다 */
+  const bumpedRef = useRef(null);
 
   useEffect(() => {
     let alive = true;
@@ -50,7 +98,10 @@ export default function NoticeDetail() {
         setNotice(row);
         setState(row ? "ready" : "missing");
         /* 조회수는 글이 실제로 있을 때만. 실패해도 글은 보여야 하므로 기다리지 않는다 */
-        if (row) bumpViews(id).catch(() => {});
+        if (row && bumpedRef.current !== id && markViewed(id)) {
+          bumpedRef.current = id;
+          bumpViews(id).catch(() => {});
+        }
       })
       .catch((err) => {
         if (!alive) return;
@@ -91,7 +142,15 @@ export default function NoticeDetail() {
   }
 
   return (
-    <PageShell label="News" title="공지사항" hero={false}>
+    /* 글마다 제목·요약·발행일이 다르므로 그 값을 껍데기로 올려 보낸다.
+       head 갱신은 PageShell 안의 useSeo 한 곳에서만 일어난다 — 두 군데서 쓰면
+       나중에 실행된 쪽이 이겨서 어느 값이 남는지 예측할 수 없게 된다 */
+    <PageShell
+      label="News"
+      title="공지사항"
+      hero={false}
+      seoContext={{ notice: toSeoNotice(notice) }}
+    >
       <div className="w-full bg-white px-[20px] pt-[48px] pb-[100px] sm:px-[24px] md:px-[40px] md:pt-[72px] md:pb-[150px] lg:pb-[200px]">
         <div
           className="mx-auto flex w-full flex-col items-center gap-[40px] font-pretendard md:gap-[60px]"
@@ -125,7 +184,8 @@ export default function NoticeDetail() {
                     className="relative mb-[8px] w-full overflow-hidden bg-[#f6f7fb] md:mb-[12px]"
                     style={{ paddingTop: `${(THUMB_RATIO * 100).toFixed(2)}%` }}
                   >
-                    <img
+                    {/* 예비 데이터는 사다리를, DB 원격 주소는 그대로 지나간다 */}
+                    <Img
                       src={notice.image}
                       alt=""
                       className={`absolute left-0 max-w-none object-cover ${

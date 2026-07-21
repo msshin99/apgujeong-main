@@ -8,9 +8,16 @@ import { useBreakpoint } from "./useBreakpoint.js";
  *   상단에 1px 실선(#e5e5ec)
  *   안쪽 1580 폭, py 80, 세로 gap 40
  *     ├ 로고 (시안에 있던 오른쪽 관리자페이지 버튼은 뺐다)
- *     └ INFO / TEL / ADRESS 3열(gap 56) + 저작권 (좌우 배치, 하단 정렬)
+ *     └ INFO / TEL / ADDRESS 3열(gap 56) + 저작권 (좌우 배치, 하단 정렬)
  */
 const INNER_W = 1580;
+
+/** 워드마크는 맨 위로 되돌리는 버튼이다. #top 앵커를 따로 심지 않으려고 직접 올린다 */
+const scrollToTop = () => {
+  // 접근성: 모션을 줄이도록 설정한 사용자에게는 부드러운 스크롤 대신 즉시 이동한다
+  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  window.scrollTo({ top: 0, behavior: reduce ? "auto" : "smooth" });
+};
 
 /**
  * Figma 70:1750 / 1758 / 1769 — 열마다 폭이 다르다.
@@ -39,7 +46,7 @@ const COLUMNS = [
     ],
   },
   {
-    title: "ADRESS",
+    title: "ADDRESS",
     width: 272,
     rowGap: 12,
     rows: [["주소 000000000 000 0000 00, 0층"]],
@@ -64,12 +71,13 @@ export default function Footer() {
           {/* 관리자페이지 버튼은 두지 않는다 — 방문자에게 보일 이유가 없다.
               관리자는 /admin 주소로 직접 들어간다 */}
           <div className="flex flex-wrap items-center justify-between gap-[16px]">
-            <a
-              href="#top"
-              className="text-[22px] leading-[26px] font-bold tracking-[-0.55px] text-white uppercase md:text-[26px] md:leading-[30px]"
+            <button
+              type="button"
+              onClick={scrollToTop}
+              className="cursor-pointer text-[22px] leading-[26px] font-bold tracking-[-0.55px] text-white uppercase md:text-[26px] md:leading-[30px]"
             >
               Apgujeong
-            </a>
+            </button>
           </div>
 
           <div className="grid grid-cols-1 gap-[28px] md:grid-cols-2 md:gap-[32px]">
@@ -131,12 +139,13 @@ export default function Footer() {
                 관리자는 /admin 주소로 직접 들어간다. */}
             <div className="flex w-full items-center justify-between">
               {/* Figma 70:1775 — Pretendard Bold 28 / lh 28 / -0.7 / 흰색 */}
-              <a
-                href="#top"
-                className="text-[28px] leading-[28px] font-bold tracking-[-0.7px] whitespace-nowrap text-white uppercase"
+              <button
+                type="button"
+                onClick={scrollToTop}
+                className="cursor-pointer text-[28px] leading-[28px] font-bold tracking-[-0.7px] whitespace-nowrap text-white uppercase"
               >
                 Apgujeong
-              </a>
+              </button>
             </div>
 
             {/* Figma 70:1748 — 정보 열 + 저작권, 하단 정렬 */}

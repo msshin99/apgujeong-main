@@ -25,26 +25,41 @@ const PHONE_PREFIXES = ["010", "011", "016", "017", "018", "019"];
 const FIELD_BOX =
   "w-full bg-[#f6f7f8] px-[18px] py-[16px] text-[16px] leading-[26px] font-normal tracking-[-0.4px] text-[#222] outline-none transition-shadow duration-200 placeholder:text-[#767676] focus:shadow-[inset_0_0_0_1px_#222] md:px-[24px] md:py-[24px] md:text-[18px] md:tracking-[-0.45px]";
 
-/** Figma 332:1744 — 라벨 + 필수 표시 */
-function Label({ children, required, top }) {
+/**
+ * Figma 332:1744 — 라벨 + 필수 표시
+ *
+ * htmlFor 가 있으면 진짜 <label> 로 그린다. div 라벨은 스크린리더가 입력칸과 묶지 못해
+ * "편집 창"으로만 읽히기 때문이다. 별표(*)는 장식이라 aria-hidden 으로 감추고
+ * 대신 "필수" 를 소리로만 읽히게 넣는다.
+ */
+function Label({ children, required, top, htmlFor }) {
+  const Tag = htmlFor ? "label" : "div";
   return (
-    <div
+    <Tag
+      htmlFor={htmlFor}
       className={`flex shrink-0 items-center gap-[4px] text-[16px] leading-[26px] font-medium tracking-[-0.4px] whitespace-nowrap md:text-[18px] md:tracking-[-0.45px] ${
         top ? "md:self-start md:pt-[24px]" : ""
       }`}
       style={{ width: LABEL_W }}
     >
       <span className="text-[#222]">{children}</span>
-      {required && <span className="text-[#ff7048]">*</span>}
-    </div>
+      {required && (
+        <>
+          <span className="text-[#ff7048]" aria-hidden="true">
+            *
+          </span>
+          <span className="sr-only">필수</span>
+        </>
+      )}
+    </Tag>
   );
 }
 
 /** 라벨 + 입력 한 줄. 좁은 화면에서는 라벨이 위로 올라간다 */
-function Row({ label, required, top, children }) {
+function Row({ label, required, top, htmlFor, children }) {
   return (
     <div className="flex w-full flex-col gap-[10px] md:flex-row md:items-center md:gap-0">
-      <Label required={required} top={top}>
+      <Label required={required} top={top} htmlFor={htmlFor}>
         {label}
       </Label>
       <div className="w-full md:shrink-0" style={{ maxWidth: FIELD_W }}>
@@ -214,7 +229,7 @@ export default function ContactForm() {
   const [agreePrivacy, setAgreePrivacy] = useState(false);
   const [agreeSms, setAgreeSms] = useState(false);
   const [honeypot, setHoneypot] = useState("");
-  /** idle | sending | sent | error */
+  /** idle | sending | sent | error | unconfigured */
   const [status, setStatus] = useState("idle");
 
   const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
@@ -230,20 +245,25 @@ export default function ContactForm() {
       return;
     }
 
+    /* ⚠️ agree_privacy 컬럼 마이그레이션을 먼저 실행해야 한다(docs/supabase-setup.md).
+       컬럼이 없는 상태로 배포하면 모든 전송이 42703(undefined column)으로 실패한다.
+       그래도 넣는 이유는 이름·전화·이메일을 수집하는 근거가 동의 기록뿐이기 때문이다. */
     const payload = {
       name: form.name.trim(),
       phone: [form.phone1, form.phone2, form.phone3].join("-"),
       email: form.email.trim(),
       message: form.message.trim(),
+      agreePrivacy,
       agreeSms,
     };
 
     if (!isSupabaseReady) {
-      // 아직 연결 전. 화면 흐름은 확인할 수 있게 둔다
+      /* 저장할 곳이 없는데 성공 화면을 띄우면 문의가 통째로 사라진 걸 아무도 모른다.
+         실패로 알리고 다른 연락 수단을 안내한다 */
       if (import.meta.env.DEV) {
         console.warn("[ContactForm] Supabase 미설정 — 전송을 건너뜁니다.", payload);
       }
-      setStatus("sent");
+      setStatus("unconfigured");
       return;
     }
 
@@ -275,13 +295,19 @@ export default function ContactForm() {
           {/* Figma 332:1742 — 상단 실선 #222, p 40, 행 간격 40 */}
           <Reveal y={20} duration={700} delay={200} className="w-full">
             <div className="flex w-full flex-col gap-[24px] border-t border-solid border-[#222] px-0 py-[28px] md:gap-[40px] md:p-[40px]">
-              <Row label="성함" required>
+              <Row label="성함" required htmlFor="contact-name">
                 <input
+                  id="contact-name"
                   type="text"
                   value={form.name}
                   onChange={set("name")}
                   placeholder="이름을 입력해주세요"
+                  /* DB 의 길이 check 제약과 같은 값이다(docs/supabase-setup.md 2-3).
+                     여기서 막지 않으면 넘겨 쓴 문의가 23514 로 거절되고
+                     방문자에게는 이유 없는 "전송에 실패했습니다" 만 뜬다 */
+                  maxLength={50}
                   required
+                  aria-required="true"
                   className={FIELD_BOX}
                 />
               </Row>
@@ -322,36 +348,46 @@ export default function ContactForm() {
                 </div>
               </Row>
 
-              <Row label="이메일" required>
+              <Row label="이메일" required htmlFor="contact-email">
                 <input
+                  id="contact-email"
                   type="email"
                   value={form.email}
                   onChange={set("email")}
                   placeholder="이메일을 입력해주세요"
+                  maxLength={254} // DB 제약과 같은 값
                   required
+                  aria-required="true"
                   className={FIELD_BOX}
                 />
               </Row>
 
-              {/* 봇 잡는 미끼 칸. 화면에서도 스크린리더에서도 감춘다 */}
+              {/* 봇 잡는 미끼 칸. 화면에서도 스크린리더에서도 감춘다.
+                  이름은 "company" 처럼 비밀번호 관리자가 알아보는 단어를 쓰면 안 된다 —
+                  자동완성이 대신 채워 버리면 진짜 문의가 스팸으로 버려진다.
+                  같은 이유로 autoComplete off / tabIndex -1 / aria-hidden 을 모두 건다 */}
               <input
                 type="text"
-                name="company"
+                name="nickname2"
+                id="contact-nickname2"
                 tabIndex={-1}
                 autoComplete="off"
-                aria-hidden
+                aria-hidden="true"
                 value={honeypot}
                 onChange={(e) => setHoneypot(e.target.value)}
                 className="absolute -left-[9999px] size-0 opacity-0"
               />
 
               {/* Figma 332:1788 — 높이 240 */}
-              <Row label="문의사항" required top>
+              <Row label="문의사항" required top htmlFor="contact-message">
                 <textarea
+                  id="contact-message"
                   value={form.message}
                   onChange={set("message")}
                   placeholder="문의하실 내용을 입력해주세요"
+                  maxLength={2000} // DB 제약과 같은 값
                   required
+                  aria-required="true"
                   className={`${FIELD_BOX} h-[180px] resize-none md:h-[240px]`}
                 />
               </Row>
@@ -396,6 +432,14 @@ export default function ContactForm() {
             {status === "error" && (
               <p className="text-center text-[14px] leading-[22px] font-medium tracking-[-0.35px] text-[#e61911]">
                 전송에 실패했습니다. 잠시 후 다시 시도해 주세요.
+              </p>
+            )}
+            {/* 사이트 어디에도 실제 전화번호가 없다(푸터 TEL 도 아직 자리표시자).
+                없는 연락 수단으로 안내하면 방문자가 막다른 길에 갇히므로 재시도만 부탁한다.
+                대표번호가 정해지면 여기에 함께 안내하는 것이 좋다 */}
+            {status === "unconfigured" && (
+              <p className="text-center text-[14px] leading-[22px] font-medium tracking-[-0.35px] text-[#e61911]">
+                현재 문의 접수가 일시적으로 불가능합니다. 잠시 후 다시 시도해 주세요.
               </p>
             )}
           </div>

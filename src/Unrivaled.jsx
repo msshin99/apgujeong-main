@@ -183,6 +183,9 @@ export default function Unrivaled({ compact = false }) {
           src={asset("/images/unrivaled/orbit.svg")}
           alt=""
           aria-hidden
+          // 첫 화면 아래의 장식 궤도라 늦게 받아도 된다
+          loading="lazy"
+          decoding="async"
           className="absolute inset-0 size-full max-w-none"
         />
 

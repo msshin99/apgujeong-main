@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="압구정곱창">
+  <!--
+    임시 파비콘이다. 브랜드 정식 심볼이 나오면 **이 파일만 교체**하면 된다
+    (index.html 의 <link rel="icon"> 은 그대로 두면 되고, 다른 곳에서 참조하지 않는다).
+
+    왜 SVG 한 장인가 — .ico/.png 사다리를 굽지 않아도 16px 탭부터 레티나 북마크까지
+    한 파일이 덮는다. 형태를 극단적으로 단순하게 잡은 것도 같은 이유다:
+    16px 로 줄었을 때 남는 건 "빨간 사각형 + A" 뿐이고, 그거면 충분하다.
+
+    글자를 font-family 로 찍지 않고 선(path)으로 그렸다. 파비콘은 웹폰트를
+    받지 않는 문맥에서도 렌더되므로, 텍스트로 두면 기기마다 다른 글꼴이 나온다.
+    헤더 워드마크 "APGUJEONG" 의 머리글자 A 를 산세리프 골격으로 옮긴 것이다.
+  -->
+  <rect width="64" height="64" rx="14" fill="#e61911" />
+  <path
+    d="M19 47 L32 17 L45 47"
+    fill="none"
+    stroke="#fff"
+    stroke-width="6"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+  <path d="M24.5 38 H39.5" fill="none" stroke="#fff" stroke-width="5.5" stroke-linecap="round" />
+</svg>

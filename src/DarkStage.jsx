@@ -188,7 +188,7 @@ export default function DarkStage() {
             style={{
               background: "rgba(230,25,17,0.4)",
               filter: `blur(${GLOW_BLUR * scale}px)`,
-              animation: `glowDrift${g.drift} ${DRIFT_DURATION[g.drift]}s ease-in-out infinite`,
+              animation: `stageGlowDrift${g.drift} ${DRIFT_DURATION[g.drift]}s ease-in-out infinite`,
             }}
           />
         </div>
@@ -218,9 +218,10 @@ export default function DarkStage() {
 
       {/* 제자리에서 떠도는 움직임.
           키프레임을 4단계로 쪼개 궤적이 한 방향 왕복이 아니라 불규칙한 곡선을 그리게 한다.
-          이동량을 %로 두면 원 크기에 비례하므로 화면 배율이 바뀌어도 느낌이 같다. */}
+          이동량을 %로 두면 원 크기에 비례하므로 화면 배율이 바뀌어도 느낌이 같다.
+          @keyframes 이름은 전역이라 GlowBackdrop 과 겹치지 않게 접두어를 붙였다. */}
       <style>{`
-        @keyframes glowDrift0 {
+        @keyframes stageGlowDrift0 {
           0%   { transform: translate3d(0, 0, 0) scale(1); opacity: 0.85; }
           20%  { transform: translate3d(48%, -26%, 0) scale(1.45); opacity: 1; }
           40%  { transform: translate3d(22%, 34%, 0) scale(0.72); opacity: 0.7; }
@@ -228,7 +229,7 @@ export default function DarkStage() {
           80%  { transform: translate3d(-12%, -30%, 0) scale(0.85); opacity: 0.8; }
           100% { transform: translate3d(0, 0, 0) scale(1); opacity: 0.85; }
         }
-        @keyframes glowDrift1 {
+        @keyframes stageGlowDrift1 {
           0%   { transform: translate3d(0, 0, 0) scale(1.12); opacity: 1; }
           20%  { transform: translate3d(-40%, 36%, 0) scale(0.7); opacity: 0.72; }
           40%  { transform: translate3d(-54%, -18%, 0) scale(1.5); opacity: 1; }
@@ -236,7 +237,7 @@ export default function DarkStage() {
           80%  { transform: translate3d(30%, 20%, 0) scale(1.28); opacity: 0.95; }
           100% { transform: translate3d(0, 0, 0) scale(1.12); opacity: 1; }
         }
-        @keyframes glowDrift2 {
+        @keyframes stageGlowDrift2 {
           0%   { transform: translate3d(0, 0, 0) scale(0.9); opacity: 0.78; }
           20%  { transform: translate3d(38%, 40%, 0) scale(1.42); opacity: 1; }
           40%  { transform: translate3d(56%, -14%, 0) scale(0.74); opacity: 0.7; }
@@ -244,7 +245,7 @@ export default function DarkStage() {
           80%  { transform: translate3d(-42%, 10%, 0) scale(0.92); opacity: 0.85; }
           100% { transform: translate3d(0, 0, 0) scale(0.9); opacity: 0.78; }
         }
-        @keyframes glowDrift3 {
+        @keyframes stageGlowDrift3 {
           0%   { transform: translate3d(0, 0, 0) scale(1.2); opacity: 1; }
           20%  { transform: translate3d(-30%, -40%, 0) scale(0.72); opacity: 0.75; }
           40%  { transform: translate3d(-50%, 26%, 0) scale(1.44); opacity: 1; }

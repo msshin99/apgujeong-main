@@ -2,6 +2,7 @@ import { useState } from "react";
 import Reveal, { RevealText } from "../Reveal.jsx";
 import { useBreakpoint } from "../useBreakpoint.js";
 import NaverMap from "./NaverMap.jsx";
+import Img from "../Img.jsx";
 import { asset } from "../lib/asset.js";
 
 /**
@@ -100,7 +101,7 @@ export default function StoreFinder() {
             </p>
           </Reveal>
           <h2 className="text-[clamp(24px,5.2vw,46px)] leading-[1.3] font-bold tracking-[-0.025em] text-black">
-            <RevealText lines={["지점찾기"]} delay={80} step={26} />
+            <RevealText lines={["지점 찾기"]} delay={80} step={26} />
           </h2>
           <Reveal delay={300} y={16} duration={600}>
             <p className="text-[14px] leading-[22px] font-normal tracking-[-0.35px] text-[#767676] md:text-[16px] lg:text-[18px] lg:leading-[26px] lg:tracking-[-0.45px]">
@@ -126,9 +127,12 @@ export default function StoreFinder() {
             onSelect={selectStore}
             className={`w-full ${isCompact ? "h-[clamp(280px,60vw,520px)]" : "h-full"}`}
             fallback={
-              <img
+              <Img
                 src={asset("/images/stores/map.png")}
                 alt="지점 위치 지도"
+                /* 지도는 대표 이미지 아래라 첫 화면에 걸리지 않는다 */
+                loading="lazy"
+                decoding="async"
                 className={`w-full object-cover ${
                   isCompact ? "h-[clamp(280px,60vw,520px)]" : "h-full"
                 }`}

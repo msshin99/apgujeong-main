@@ -1,8 +1,9 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef } from "react";
 import { DESIGN_W, useWidthScale } from "./useCanvasScale.js";
 import Reveal, { RevealText } from "./Reveal.jsx";
 import { Magnetic } from "./Tilt.jsx";
 import { useBreakpoint } from "./useBreakpoint.js";
+import Img from "./Img.jsx";
 import { asset } from "./lib/asset.js";
 
 /**
@@ -93,7 +94,6 @@ export default function Collection() {
   const totalH = SECTION_H + PAD_TOP + PAD_BOTTOM;
 
   const cardRefs = useRef([]);
-  const stripRef = useRef(null);
   const target = useRef(0); // 목표 위치(칸 단위)
   const pos = useRef(0); // 실제로 그려지는 위치
   const raf = useRef(0);
@@ -134,10 +134,13 @@ export default function Collection() {
   };
 
   /**
-   * 루프는 멈추지 않고 계속 돈다.
    *   target 은 매 프레임 AUTO_SPEED 만큼 자동으로 흘러간다 (무한 반복)
    *   pos 는 target 을 감쇠 보간으로 따라간다 → 버튼·드래그가 끼어들어도 부드럽다
    * 드래그 중에는 자동 흐름을 멈추고 손가락 위치를 그대로 따른다.
+   *
+   * 자동 흐름이 꺼진 상태(모션 최소화)에서 목표까지 다 따라잡았으면 루프를 쉬게 한다.
+   * 14장의 transform·clip-path 를 아무 변화 없이 매 프레임 다시 계산할 이유가 없다.
+   * 버튼·드래그가 들어오면 start() 로 되살린다.
    */
   const tick = (now) => {
     const dt = lastTime.current
@@ -147,15 +150,35 @@ export default function Collection() {
 
     if (autoOn.current && !drag.current) target.current += AUTO_SPEED * dt;
 
+    const diff = target.current - pos.current;
     if (drag.current) {
       pos.current = target.current; // 드래그 중에는 지연 없이 손을 따라간다
+    } else if (!autoOn.current && Math.abs(diff) < 0.0005) {
+      pos.current = target.current;
+      draw(pos.current);
+      raf.current = 0;
+      lastTime.current = 0; // 다음 재개 때 dt 가 크게 튀지 않도록
+      return;
     } else {
-      pos.current += (target.current - pos.current) * DAMPING;
+      pos.current += diff * DAMPING;
     }
 
     draw(pos.current);
     raf.current = requestAnimationFrame(tick);
   };
+
+  const start = () => {
+    if (!raf.current) raf.current = requestAnimationFrame(tick);
+  };
+
+  /* 분기가 바뀌면 카드 DOM 이 통째로 새로 만들어져 인라인 transform·clipPath 가 없다.
+     루프는 모션 최소화 설정에서 스스로 멈춰 있을 수 있으므로(tick 참고) 다음 프레임이
+     대신 그려 주리라 기대할 수 없다 — 여기서 직접 다시 배치한다.
+     페인트 전에 끝내야 14 장이 화면 가운데 겹쳐 보이는 한 프레임이 생기지 않는다. */
+  useLayoutEffect(() => {
+    draw(pos.current);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isCompact, isMobile]);
 
   useEffect(() => {
     // 접근성: 모션을 줄이도록 설정한 사용자에게는 자동 흐름을 끈다
@@ -175,6 +198,7 @@ export default function Collection() {
   // 버튼 — 목표만 옮기고 실제 이동은 감쇠 보간이 맡는다
   const move = (dir) => {
     target.current += dir;
+    start();
   };
 
   /* 마우스·터치 드래그 */
@@ -184,6 +208,7 @@ export default function Collection() {
       startTarget: target.current,
       moved: false,
     };
+    start();
     e.currentTarget.setPointerCapture(e.pointerId);
   };
 
@@ -224,14 +249,13 @@ export default function Collection() {
           </h2>
           <Reveal delay={320} y={16} duration={600}>
             <p className="text-[14px] leading-[22px] font-normal tracking-[-0.35px] text-[#767676] md:text-[16px] md:leading-[24px]">
-              장 고귀한 식재료로 빚어낸, 오직 우리만이 선보일 수 있는 시그니처 메뉴 라인업입니다.
+              가장 고귀한 식재료로 빚어낸, 오직 우리만이 선보일 수 있는 시그니처 메뉴 라인업입니다.
             </p>
           </Reveal>
         </div>
 
         {/* 카드 스트립 — 화면 밖으로 흘러나간다 */}
         <div
-          ref={stripRef}
           className="relative mt-[40px] w-full cursor-grab touch-pan-y select-none active:cursor-grabbing md:mt-[56px]"
           style={{ height: h }}
           onPointerDown={onPointerDown}
@@ -246,10 +270,12 @@ export default function Collection() {
               className="absolute top-0 left-1/2 overflow-hidden bg-[#d9d9d9] will-change-transform"
               style={{ width: w, height: h, marginLeft: -w / 2 }}
             >
-              <img
+              <Img
                 src={card.image}
                 alt=""
                 draggable={false}
+                loading="lazy"
+                decoding="async"
                 className="pointer-events-none absolute inset-0 size-full max-w-none object-cover"
               />
             </div>
@@ -272,6 +298,8 @@ export default function Collection() {
                 src={asset("/images/collection/arrow.svg")}
                 alt=""
                 aria-hidden
+                loading="lazy"
+                decoding="async"
                 className="size-[20px] md:size-[22px]"
                 style={{ transform: `rotate(${btn.rotate}deg)` }}
               />
@@ -303,7 +331,6 @@ export default function Collection() {
             {/* Figma 332:786 — 카드 스트립. 회전 없이 가로로만 흐른다.
                 드래그를 받기 위해 화면 전체 폭의 판을 깔고 그 위에 카드를 얹는다 */}
             <div
-              ref={stripRef}
               className="absolute left-1/2 -translate-x-1/2 cursor-grab touch-pan-y select-none active:cursor-grabbing"
               style={{ top: STRIP_TOP, height: CARD_H, width: DRAG_AREA_W }}
               onPointerDown={onPointerDown}
@@ -322,10 +349,12 @@ export default function Collection() {
                     marginLeft: -CARD_W / 2,
                   }}
                 >
-                  <img
+                  <Img
                     src={card.image}
                     alt=""
                     draggable={false}
+                    loading="lazy"
+                    decoding="async"
                     className="pointer-events-none absolute inset-0 size-full max-w-none object-cover brightness-90 transition-[transform,filter] duration-700 ease-out group-hover:scale-[1.08] group-hover:brightness-110"
                   />
                 </div>
@@ -356,7 +385,7 @@ export default function Collection() {
                 {/* Figma 332:800 — Pretendard Regular 18 / lh 26 / -0.45 / #767676 */}
                 <Reveal className="w-full" delay={420} y={20} duration={700}>
                   <p className="w-full text-[18px] leading-[26px] font-normal tracking-[-0.45px] text-[#767676]">
-                    장 고귀한 식재료로 빚어낸, 오직 우리만이 선보일 수 있는
+                    가장 고귀한 식재료로 빚어낸, 오직 우리만이 선보일 수 있는
                     시그니처 메뉴 라인업입니다.
                   </p>
                 </Reveal>
@@ -384,6 +413,8 @@ export default function Collection() {
                       src={asset("/images/collection/arrow.svg")}
                       alt=""
                       aria-hidden
+                      loading="lazy"
+                      decoding="async"
                       className="size-[22px] transition-[filter] duration-300 group-hover:invert"
                       style={{ transform: `rotate(${btn.rotate}deg)` }}
                     />

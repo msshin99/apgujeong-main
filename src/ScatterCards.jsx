@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { DESIGN_W, useCanvasScale } from "./useCanvasScale.js";
 import { useBreakpoint } from "./useBreakpoint.js";
 import Reveal from "./Reveal.jsx";
+import Img from "./Img.jsx";
 import { asset } from "./lib/asset.js";
 
 /**
@@ -251,9 +252,12 @@ export default function ScatterCards() {
             <Reveal key={card.id} delay={i * 110} y={36}>
               <article className="flex w-full flex-col">
                 <div className="relative w-full overflow-hidden bg-neutral-200 pt-[128%]">
-                  <img
+                  <Img
                     src={card.image}
                     alt=""
+                    // 히어로 아래 구간이라 화면에 들어올 때 받는다
+                    loading="lazy"
+                    decoding="async"
                     className="absolute inset-0 size-full object-cover"
                   />
                 </div>
@@ -359,9 +363,12 @@ export default function ScatterCards() {
                 className="relative overflow-hidden bg-white will-change-transform"
                 style={{ width: CARD_W, height: CARD_H }}
               >
-                <img
+                <Img
                   src={card.image}
                   alt=""
+                  // 히어로 아래 구간이라 화면에 들어올 때 받는다
+                  loading="lazy"
+                  decoding="async"
                   className={
                     card.crop
                       ? "absolute max-w-none object-cover"

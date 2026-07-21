@@ -3,7 +3,8 @@ import { Link } from "react-router-dom";
 import Reveal, { RevealText } from "../Reveal.jsx";
 import Tilt from "../Tilt.jsx";
 import { useBreakpoint } from "../useBreakpoint.js";
-import { listNotices } from "../lib/notices.js";
+import Img from "../Img.jsx";
+import { listNotices, seededNotices } from "../lib/notices.js";
 
 /**
  * Figma: Frame 2095587768 (332:1598) — 1680 폭, 공지사항 페이지 목록.
@@ -18,7 +19,8 @@ import { listNotices } from "../lib/notices.js";
  */
 const THUMB_RATIO = 300 / 544; // 썸네일 비율. 유동 폭에서도 300px 자리를 지킨다
 
-function NoticeCard({ item }) {
+/** eager 는 첫 줄(화면에 바로 보이는 3장)에만 준다 — 나머지는 스크롤할 때 받는다 */
+function NoticeCard({ item, eager = false }) {
   return (
     /* 카드 전체가 상세 페이지로 가는 링크다 */
     <Link
@@ -32,9 +34,12 @@ function NoticeCard({ item }) {
       >
         {/* crop 은 예비 데이터 전용 값이다. DB 사진은 잘라내기 없이 꽉 채운다 */}
         {item.image ? (
-          <img
+          /* 예비 데이터는 /images/notice/*.png 라 사다리를, DB 글은 Supabase Storage
+             원격 주소라 Img 가 손대지 않고 평범한 <img> 로 내보낸다 */
+          <Img
             src={item.image}
             alt=""
+            loading={eager ? "eager" : "lazy"}
             className={`absolute left-0 max-w-none transition-transform duration-700 ease-out group-hover:scale-[1.04] ${
               item.crop ? "w-full object-cover" : "inset-0 size-full object-cover"
             }`}
@@ -74,8 +79,12 @@ function NoticeCard({ item }) {
 
 export default function NoticeBoard() {
   const { isCompact } = useBreakpoint();
-  const [notices, setNotices] = useState([]);
-  const [state, setState] = useState("loading"); // loading | ready | error
+  /* 프리렌더는 effect 를 돌리지 않는다. 빌드가 심어 둔 목록이 있으면 첫 렌더부터
+     카드를 그려서 정적 HTML 에 제목과 날짜가 실리게 한다.
+     브라우저에서는 언제나 null 이라 종전처럼 뼈대부터 시작한다 */
+  const seed = seededNotices();
+  const [notices, setNotices] = useState(seed ?? []);
+  const [state, setState] = useState(seed ? "ready" : "loading"); // loading | ready | error
 
   useEffect(() => {
     let alive = true;
@@ -151,10 +160,14 @@ export default function NoticeBoard() {
                  마지막 카드가 나타나기까지 지나치게 오래 걸린다 */
               <Reveal key={item.id} delay={(i % 3) * 120} y={36}>
                 {isCompact ? (
-                  <NoticeCard item={item} />
+                  /* 1열이라 첫 화면에 보이는 건 사실상 첫 장뿐이다.
+                     여기서도 3장을 먼저 받으면 안 보이는 두 장 때문에
+                     모바일에서 아낀 대역폭을 도로 쓰게 된다 */
+                  <NoticeCard item={item} eager={i < 1} />
                 ) : (
                   <Tilt max={6} perspective={1400}>
-                    <NoticeCard item={item} />
+                    {/* 3열이라 첫 줄(화면에 바로 보이는 3장)만 먼저 받는다 */}
+                    <NoticeCard item={item} eager={i < 3} />
                   </Tilt>
                 )}
               </Reveal>

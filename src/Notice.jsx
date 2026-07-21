@@ -4,9 +4,10 @@ import { DESIGN_W, useWidthScale } from "./useCanvasScale.js";
 import Reveal, { RevealText } from "./Reveal.jsx";
 import Tilt from "./Tilt.jsx";
 import { useBreakpoint } from "./useBreakpoint.js";
-import { listFeatured } from "./lib/notices.js";
+import Img from "./Img.jsx";
+import { FEATURED_LIMIT, listFeatured, seededNotices } from "./lib/notices.js";
 import { isSupabaseReady } from "./lib/supabase.js";
-import { asset } from "./lib/asset.js";
+import { NOTICES as FALLBACK } from "./pages/noticeData.js";
 
 /**
  * Figma: Frame 2095587710 (332:715) — x 120 / y 10000 / 1680 x 704
@@ -29,40 +30,12 @@ const PAD_BOTTOM = 200;
 
 /**
  * Supabase 연결 전에 쓰는 예비 데이터.
- * crop 은 300px 썸네일 안에 이미지가 놓인 방식을 그대로 옮긴 값.
+ *
+ * 여기서 따로 적어 두면 id 가 목록·상세(noticeData.js)와 어긋나 카드를 눌렀을 때
+ * "찾을 수 없습니다" 로 빠진다. 그래서 같은 원본에서 앞 3건을 그대로 잘라 쓴다.
+ * crop(Figma 332:724 / 332:733 / 332:742) 도 원본이 들고 있다.
  */
-const PLACEHOLDER = [
-  {
-    id: "n1",
-    tag: "NEWS",
-    title:
-      "압구정곱창 공지사항텍스트압구정곱창 공지사항텍스트압구정곱창 공지사항텍스트압구정곱창 공지사항텍스트",
-    date: "2026.00.00",
-    image: asset("/images/notice/n1.png"),
-    // Figma 332:724 — h 181.33% / top -48.59%
-    crop: { height: "181.33%", top: "-48.59%" },
-  },
-  {
-    id: "n2",
-    tag: "NEWS",
-    title:
-      "압구정곱창 공지사항텍스트압구정곱창 공지사항텍스트압구정곱창 공지사항텍스트압구정곱창 공지사항텍스트",
-    date: "2026.00.00",
-    image: asset("/images/notice/n2.png"),
-    // Figma 332:733 — h 181.33% / top 0.06%
-    crop: { height: "181.33%", top: "0.06%" },
-  },
-  {
-    id: "n3",
-    tag: "NEWS",
-    title:
-      "압구정곱창 공지사항텍스트압구정곱창 공지사항텍스트압구정곱창 공지사항텍스트압구정곱창 공지사항텍스트",
-    date: "2026.00.00",
-    image: asset("/images/notice/n3.png"),
-    // Figma 332:742 — h 181.33% / top -7.59%
-    crop: { height: "181.33%", top: "-7.59%" },
-  },
-];
+const PLACEHOLDER = FALLBACK.slice(0, FEATURED_LIMIT);
 
 /** 썸네일이 프레임 안에서 위아래로 미세하게 밀리는 폭 */
 const PARALLAX = 26;
@@ -76,7 +49,17 @@ export default function Notice() {
      DB 가 연결돼 있으면 결과가 비어 있어도 그대로 따른다. 예비 데이터로 덮으면
      "등록했는데 왜 안 바뀌지" 하는 상황에서 원인을 알 수 없게 된다.
      연결 자체가 안 돼 있을 때만 예비 데이터를 쓴다. */
-  const [notices, setNotices] = useState(isSupabaseReady ? null : PLACEHOLDER);
+  /* 프리렌더는 effect 를 돌리지 않으므로 DB 가 연결된 빌드에서는 이 자리가 통째로
+     비어 버린다. 빌드가 심어 둔 목록이 있으면 그 앞 3건으로 첫 렌더를 채운다 —
+     is_featured 순서까지 재현하지는 않지만, 크롤러에게 빈 칸을 보이는 것보다 낫다.
+     브라우저에서는 seededNotices() 가 언제나 null 이라 종전 동작 그대로다 */
+  const seed = seededNotices();
+  const [notices, setNotices] = useState(
+    seed ? seed.slice(0, FEATURED_LIMIT) : isSupabaseReady ? null : PLACEHOLDER,
+  );
+  /* 못 불러온 것과 한 건도 없는 것은 다르다. 구분하지 않으면 네트워크·RLS 오류가
+     "등록된 공지사항이 없습니다" 로 둔갑해 원인을 정반대로 읽게 된다 */
+  const [failed, setFailed] = useState(false);
 
   useEffect(() => {
     if (!isSupabaseReady) return;
@@ -85,6 +68,7 @@ export default function Notice() {
     listFeatured()
       .then((rows) => {
         if (!alive) return;
+        setFailed(false);
         setNotices(rows);
         if (import.meta.env.DEV && rows.length === 0) {
           console.warn(
@@ -96,6 +80,7 @@ export default function Notice() {
       .catch((err) => {
         if (!alive) return;
         console.error("[Notice] 공지를 불러오지 못했습니다.", err);
+        setFailed(true);
         setNotices([]);
       });
     return () => {
@@ -163,20 +148,28 @@ export default function Notice() {
             </Reveal>
           </div>
 
+          {notices?.length === 0 && <EmptyNotice failed={failed} />}
           <div className="grid grid-cols-1 gap-[24px] md:grid-cols-2">
             {(notices ?? []).map((item, i) => (
               <Reveal key={item.id} delay={i * 120} y={32}>
                 <Link to={`/notice/${item.id}`} className="flex h-full w-full flex-col">
                   <div className="relative w-full overflow-hidden pt-[55%]">
-                    {item.image && (
-                      <img
+                    {/* 사진이 없는 글도 있다. 목록(NoticeBoard)과 같게 빈 판을 깔아
+                        카드 높이가 무너지지 않도록 한다 */}
+                    {item.image ? (
+                      /* 예비 데이터는 /images/notice/*.png 라 사다리를 타고,
+                         DB 글은 Supabase Storage 원격 주소라 Img 가 그대로 <img> 로 내보낸다 */
+                      <Img
                         src={item.image}
                         alt=""
+                        loading="lazy"
                         className={`absolute left-0 max-w-none object-cover ${
                           item.crop ? "w-full" : "inset-0 size-full"
                         }`}
                         style={item.crop ?? undefined}
                       />
+                    ) : (
+                      <span className="absolute inset-0 bg-[#f6f7fb]" />
                     )}
                   </div>
                   <div className="flex flex-1 flex-col gap-[20px] border border-solid border-[#e5e5ec] bg-white p-[20px] md:gap-[24px] md:p-[24px]">
@@ -249,6 +242,7 @@ export default function Notice() {
             </div>
 
             {/* Figma 332:722 — 카드 3장, 가로 gap 24 */}
+            {notices?.length === 0 && <EmptyNotice failed={failed} />}
             <div className="flex w-full items-center" style={{ gap: CARD_GAP }}>
               {(notices ?? []).map((item, cardIndex) => (
                 <Reveal
@@ -274,15 +268,21 @@ export default function Notice() {
                           ref={(el) => (parallaxRefs.current[cardIndex] = el)}
                           className="absolute inset-0 will-change-transform"
                         >
-                          {item.image && (
-                            <img
+                          {/* 사진이 없는 글도 있다. 목록(NoticeBoard)과 같게 빈 판을 깔아
+                              썸네일 자리가 비어 보이지 않도록 한다 */}
+                          {item.image ? (
+                            /* 예비 데이터는 사다리를, DB 원격 주소는 평범한 <img> 를 탄다 */
+                            <Img
                               src={item.image}
                               alt=""
+                              loading="lazy"
                               className={`absolute left-0 max-w-none object-cover transition-transform duration-700 ease-out group-hover:scale-[1.04] ${
                                 item.crop ? "w-full" : "inset-0 size-full"
                               }`}
                               style={item.crop ?? undefined}
                             />
+                          ) : (
+                            <span className="absolute inset-0 bg-[#f6f7fb]" />
                           )}
                         </div>
                       </div>
@@ -319,5 +319,24 @@ export default function Notice() {
         </div>
       </div>
     </section>
+  );
+}
+
+/**
+ * 실을 공지가 한 건도 없을 때.
+ *
+ * 콘솔 경고는 개발 중에만 보이므로 실제 운영자는 "왜 안 뜨지" 하고 끝난다.
+ * 방문자에게는 그냥 비어 있다는 안내로, 운영자에게는 자리가 남아 있다는 신호로
+ * 읽히도록 목록 페이지(NoticeBoard)와 같은 문구를 쓴다.
+ *
+ * 못 불러온 경우도 목록이 비지만 뜻은 정반대다. 목록 페이지와 같이 문구를 나눈다.
+ */
+function EmptyNotice({ failed }) {
+  return (
+    <p className="w-full py-[60px] text-center text-[16px] leading-[26px] font-light tracking-[-0.4px] text-[#767676]">
+      {failed
+        ? "공지사항을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요."
+        : "등록된 공지사항이 없습니다."}
+    </p>
   );
 }

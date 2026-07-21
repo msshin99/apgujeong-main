@@ -6,12 +6,15 @@ import { Link } from "react-router-dom";
  * 1200 이상에서는 1920 캔버스 기준 고정 px 를 그대로 쓴다.
  * 1200 미만에서는 유동 폭으로 바뀌고, 메뉴는 가로 스크롤로 넘긴다
  * (드로어 메뉴는 피그마에 시안이 없어 만들지 않았다).
+ *
+ * 라벨은 pages.jsx 의 PageShell title 과 같은 표기를 쓴다.
+ * 내비에서 본 이름과 페이지에 찍히는 제목이 다르면 같은 곳인지 헷갈린다.
  */
 export const NAV = [
-  { label: "브랜드소개", to: "/brand" },
-  { label: "메뉴소개", to: "/menu" },
-  { label: "와인리스트", to: "/wine" },
-  { label: "지점찾기", to: "/stores" },
+  { label: "브랜드 소개", to: "/brand" },
+  { label: "메뉴 소개", to: "/menu" },
+  { label: "와인 리스트", to: "/wine" },
+  { label: "지점 찾기", to: "/stores" },
   { label: "공지사항", to: "/notice" },
 ];
 

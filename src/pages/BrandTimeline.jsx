@@ -96,9 +96,13 @@ function Ruler() {
       }
     };
 
-    /* 루프는 멈추지 않는다.
-       커서가 있으면 그 위치를 감쇠 보간으로 따라가고,
-       없으면 스윕이 왼쪽 밖에서 오른쪽 밖까지 반복해서 지나간다. */
+    /* 커서가 있으면 그 위치를 감쇠 보간으로 따라가고,
+       없으면 스윕이 왼쪽 밖에서 오른쪽 밖까지 반복해서 지나간다.
+
+       34개 눈금의 height / backgroundColor 를 매 프레임 다시 쓰는 루프라
+       할 일이 없을 때까지 돌려두면 그만큼 계속 낭비된다.
+       커서를 다 따라잡았거나 화면 밖으로 나가면 raf = 0 으로 멈추고,
+       다음 pointermove 나 다시 보일 때 start() 로 되살린다. */
     const tick = (now) => {
       const dt = last ? Math.min((now - last) / 1000, 0.1) : 0;
       last = now;
@@ -106,22 +110,41 @@ function Ruler() {
       if (target.x >= 0) {
         if (cur.x < 0) cur.x = target.x;
         cur.x += (target.x - cur.x) * DAMPING;
+        // 0.5px 아래로 좁혀지면 눈으로 구분되지 않는다. 붙여 놓고 멈춘다
+        if (Math.abs(target.x - cur.x) < 0.5) {
+          cur.x = target.x;
+          paint(cur.x);
+          raf = 0;
+          last = 0;
+          return;
+        }
         paint(cur.x);
-      } else {
+      } else if (inView) {
         sweep = (sweep + dt / SWEEP_PERIOD) % 1;
         const span = (host.clientWidth || 1) + FALLOFF * 2;
         cur.x = sweep * span - FALLOFF;
         paint(cur.x);
+      } else {
+        // 화면 밖 — 눈금을 기본 높이로 되돌리고 멈춘다
+        paint(-1);
+        raf = 0;
+        last = 0;
+        return;
       }
       raf = requestAnimationFrame(tick);
+    };
+    const start = () => {
+      if (!raf) raf = requestAnimationFrame(tick);
     };
 
     const onMove = (e) => {
       target.x = e.clientX - host.getBoundingClientRect().left;
+      start();
     };
     const onLeave = () => {
       target.x = -1;
       cur.x = -1; // 스윕이 이어받도록 초기화
+      start();
     };
     const onResize = () => {
       measure();
@@ -131,14 +154,14 @@ function Ruler() {
     host.addEventListener("pointermove", onMove);
     host.addEventListener("pointerleave", onLeave);
     window.addEventListener("resize", onResize);
-    raf = requestAnimationFrame(tick);
+    start();
     return () => {
       if (raf) cancelAnimationFrame(raf);
       host.removeEventListener("pointermove", onMove);
       host.removeEventListener("pointerleave", onLeave);
       window.removeEventListener("resize", onResize);
     };
-  }, []);
+  }, [inView]);
 
   let index = 0;
   const pushRef = (el) => {

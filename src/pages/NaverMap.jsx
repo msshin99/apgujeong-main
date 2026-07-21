@@ -26,29 +26,79 @@ const KEY_PARAMS = FORCED_PARAM ? [FORCED_PARAM] : ["ncpKeyId", "ncpClientId"];
 
 let loader = null;
 
+/**
+ * 인증 실패 신호는 스크립트 onload 뒤에 비동기로 온다. 예전에는 onload 800ms 뒤
+ * 무조건 성공으로 확정(latch)했는데, 이게 이 파일의 가장 큰 버그였다.
+ *  - 키 파라미터 이름이 틀려도 스크립트는 200 으로 내려오므로 항상 성공 판정 →
+ *    ncpClientId 폴백이 영영 실행되지 않는 dead code 였고,
+ *  - 800ms 를 넘겨 도착한 인증 실패는 통째로 묻혀 failed 가 false 로 남아
+ *    정적 이미지 fallback 대신 빈 회색 박스만 보였다.
+ * 그래서 지금은 "SDK 가 실제로 올라왔는가 + 인증 실패 신호가 없었는가"로 판정하고,
+ * 늦게 도착한 실패도 구독자에게 흘려보낸다.
+ */
+let authFailed = false;
+const authSubscribers = new Set();
+
+if (typeof window !== "undefined") {
+  window.navermap_authFailure = () => {
+    authFailed = true;
+    authSubscribers.forEach((fn) => fn());
+  };
+}
+
+/** 인증 실패를 나중에 통보받기 위한 구독. 해제 함수를 돌려준다 */
+function onAuthFailure(fn) {
+  authSubscribers.add(fn);
+  return () => authSubscribers.delete(fn);
+}
+
+/** 인증 실패 콜백이 도착할 여유. 이 시간이 지나도 조용하면 정상으로 본다 */
+const AUTH_GRACE_MS = 1500;
+/** 스크립트가 아예 응답하지 않는 경우의 상한. 성공이 아니라 실패로 끝나야 한다 */
+const LOAD_TIMEOUT_MS = 8000;
+
 function loadWith(param) {
   return new Promise((resolve, reject) => {
     let settled = false;
+    let graceTimer = null;
+    const script = document.createElement("script");
+
     const done = (fn, arg) => {
       if (settled) return;
       settled = true;
+      clearTimeout(graceTimer);
+      clearTimeout(hardTimer);
+      unsubscribe();
       fn(arg);
     };
 
-    window.navermap_authFailure = () => done(reject, new Error(`인증 실패 (${param})`));
+    // 유예 시간 안에 인증 실패가 오면 즉시 실패로 끊어 다음 파라미터로 넘어간다
+    const unsubscribe = onAuthFailure(() => done(reject, new Error(`인증 실패 (${param})`)));
+    const hardTimer = setTimeout(
+      () => done(reject, new Error(`응답 없음 (${param})`)),
+      LOAD_TIMEOUT_MS,
+    );
 
-    const script = document.createElement("script");
     // geocoder 서브모듈을 함께 받아 주소 문자열로 좌표를 구한다
     script.src = `https://oapi.map.naver.com/openapi/v3/maps.js?${param}=${CLIENT_ID}&submodules=geocoder`;
     script.async = true;
     script.onerror = () => done(reject, new Error(`스크립트 로드 실패 (${param})`));
-    // 인증 실패는 onload 뒤에 콜백으로 오므로 잠깐 기다렸다가 성공으로 본다
-    script.onload = () => setTimeout(() => done(resolve), 800);
+    script.onload = () => {
+      graceTimer = setTimeout(() => {
+        // 타이머가 아니라 SDK 실재 여부와 인증 실패 신호로 성패를 가른다
+        if (authFailed) return done(reject, new Error(`인증 실패 (${param})`));
+        if (!window.naver?.maps?.Map) {
+          return done(reject, new Error(`SDK 초기화 실패 (${param})`));
+        }
+        done(resolve);
+      }, AUTH_GRACE_MS);
+    };
     document.head.appendChild(script);
   }).catch((err) => {
     // 다음 시도가 깨끗한 상태에서 시작하도록 흔적을 지운다
     document.querySelectorAll(`script[src*="${param}=${CLIENT_ID}"]`).forEach((el) => el.remove());
     delete window.naver;
+    authFailed = false;
     throw err;
   });
 }
@@ -57,10 +107,16 @@ function loadScript() {
   if (window.naver?.maps) return Promise.resolve();
   if (loader) return loader;
 
-  loader = KEY_PARAMS.reduce(
+  authFailed = false;
+  const attempt = KEY_PARAMS.reduce(
     (chain, param) => chain.catch(() => loadWith(param)),
     Promise.reject(new Error("시작")),
   );
+  // 실패한 promise 를 캐시에 남겨 두면 재마운트해도 영영 재시도되지 않는다
+  loader = attempt.catch((err) => {
+    loader = null;
+    throw err;
+  });
   return loader;
 }
 
@@ -116,6 +172,26 @@ export default function NaverMap({
     }
 
     let cancelled = false;
+    /* 로드 중의 인증 실패는 loadScript 안에서 다음 키 파라미터로 넘어가는 신호이므로
+       여기서 가로채면 폴백이 죽는다. 구독은 로드가 끝난 뒤에만 건다 */
+    let unsubscribe = () => {};
+
+    /* 지도를 걷어 낸다. 언마운트뿐 아니라 "지도가 뜬 뒤 인증 실패" 로 정적 이미지
+       fallback 으로 갈아탈 때도 필요하다 — 그 순간 hostRef 의 div 가 DOM 에서
+       빠지므로, 정리하지 않으면 지도 인스턴스와 마커, window 에 건 wheel 리스너가
+       주인 없이 남는다. 두 번 불려도 안전하도록 각 단계는 비우고 지나간다 */
+    const teardown = () => {
+      if (wheelHandlerRef.current) {
+        // 등록할 때와 같은 옵션(capture)으로 지워야 해제된다
+        window.removeEventListener("wheel", wheelHandlerRef.current, WHEEL_OPTS);
+      }
+      wheelHostRef.current = null;
+      wheelHandlerRef.current = null;
+      markersRef.current.forEach((m) => m.setMap(null));
+      markersRef.current = [];
+      mapRef.current?.destroy?.();
+      mapRef.current = null;
+    };
     loadScript()
       .then(async () => {
         if (cancelled || !hostRef.current) return;
@@ -127,6 +203,23 @@ export default function NaverMap({
         );
         if (cancelled || !hostRef.current) return;
         posRef.current = resolved;
+
+        /* 로드 성공 직후 ~ 여기까지(지오코딩 왕복 수백 ms)는 구독자가 하나도 없다.
+           그 사이 도착한 인증 실패는 모듈 플래그에만 남으므로, 구독을 걸기 전에
+           먼저 플래그를 확인해 놓친 신호를 되살린다. 아직 지도를 만들기 전이라
+           걷어 낼 것이 없어 teardown 없이 그대로 fallback 으로 넘어간다 */
+        if (authFailed) {
+          setFailed(true);
+          return;
+        }
+
+        // 지도가 뜬 뒤 늦게 도착하는 인증 실패도 정적 이미지 fallback 으로 이어져야 한다
+        unsubscribe = onAuthFailure(() => {
+          if (cancelled) return;
+          // 화면을 갈아타기 전에 지도부터 걷어 낸다 (이 효과의 클린업은 언마운트 전까지 안 돈다)
+          teardown();
+          setFailed(true);
+        });
 
         mapRef.current = new naver.maps.Map(hostRef.current, {
           center: new naver.maps.LatLng(resolved[0].lat, resolved[0].lng),
@@ -172,16 +265,8 @@ export default function NaverMap({
 
     return () => {
       cancelled = true;
-      if (wheelHandlerRef.current) {
-        // 등록할 때와 같은 옵션(capture)으로 지워야 해제된다
-        window.removeEventListener("wheel", wheelHandlerRef.current, WHEEL_OPTS);
-      }
-      wheelHostRef.current = null;
-      wheelHandlerRef.current = null;
-      markersRef.current.forEach((m) => m.setMap(null));
-      markersRef.current = [];
-      mapRef.current?.destroy?.();
-      mapRef.current = null;
+      unsubscribe();
+      teardown();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

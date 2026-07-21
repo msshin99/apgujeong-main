@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { DESIGN_W, useWidthScale } from "./useCanvasScale.js";
 import { useBreakpoint } from "./useBreakpoint.js";
+import Img from "./Img.jsx";
 import { asset } from "./lib/asset.js";
 
 /**
@@ -39,6 +40,9 @@ const SLOT_H = 92; // 이름 중심 사이 간격 (성수동 16 → 압구정 10
 
 const DAMPING = 0.12;
 const WHEEL_THRESHOLD = 60; // 이만큼 굴리면 한 칸 이동
+/* 손을 뗀 뒤 이만큼 조용하면 누적을 버린다. 이게 없으면 한참 전에 스쳐 간 굴림이
+   남아 있다가 다음 굴림 한 번에 칸이 넘어간다 */
+const WHEEL_IDLE_MS = 400;
 
 /**
  * Figma 332:705 / 706 / 707.
@@ -65,15 +69,20 @@ export default function Franchise() {
   const scale = useWidthScale();
   const { isCompact } = useBreakpoint();
   const totalH = SECTION_H + PAD_TOP + PAD_BOTTOM;
+  // 선택된 지점은 여기 한 곳에만 둔다 — 두 분기가 같은 값을 읽어야
+  // 1200 경계를 넘나들어도 고른 지점이 그대로 남는다. 초기값은 Figma 기본 — 압구정지점
   const [activeIdx, setActiveIdx] = useState(1);
 
   const listRef = useRef(null);
   const rowRefs = useRef([]); // { wrap, bold, plain }
   const photoRefs = useRef([]);
-  const target = useRef(1); // Figma 기본값 — 압구정지점
-  const pos = useRef(1);
+  // 아래 두 ref 는 activeIdx 를 매 프레임 보간하기 위한 사본일 뿐, 진실은 activeIdx 다
+  const target = useRef(activeIdx);
+  const pos = useRef(activeIdx);
   const raf = useRef(0);
   const wheelAcc = useRef(0);
+  const wheelDir = useRef(0);
+  const wheelAt = useRef(0);
 
   const draw = (p) => {
     BRANCHES.forEach((_, i) => {
@@ -117,14 +126,20 @@ export default function Franchise() {
   };
 
   const moveTo = (i) => {
-    target.current = clamp(i, 0, N - 1);
-    if (!raf.current) raf.current = requestAnimationFrame(tick);
+    const next = clamp(i, 0, N - 1);
+    setActiveIdx(next);
+    target.current = next;
+    // 보간 루프는 목록이 실제로 그려지는 데스크톱 분기에서만 돌린다
+    if (!isCompact && !raf.current) raf.current = requestAnimationFrame(tick);
   };
 
   useEffect(() => {
     // 1200 미만에서는 휠 피커 대신 탭으로 고른다 (모바일에서 휠 가로채기는 부적절)
     if (isCompact) return;
 
+    // 좁은 화면에서 고르고 넓혔을 수 있으니 현재 선택을 이어받아 그린다
+    target.current = activeIdx;
+    pos.current = activeIdx;
     draw(pos.current);
 
     const el = listRef.current;
@@ -132,18 +147,36 @@ export default function Franchise() {
 
     // 목록 위에서만 휠을 가로챈다. preventDefault 를 쓰려면 passive 가 아니어야 한다
     const onWheel = (e) => {
-      const next = clamp(target.current + Math.sign(e.deltaY), 0, N - 1);
-      // 끝에 닿았으면 페이지 스크롤을 막지 않고 넘긴다
-      if (next === target.current && Math.sign(e.deltaY) !== 0) {
-        const atEdge =
-          (e.deltaY > 0 && target.current === N - 1) ||
-          (e.deltaY < 0 && target.current === 0);
-        if (atEdge) return;
+      const dir = Math.sign(e.deltaY);
+      // 끝에 닿았으면 더 고를 게 없으니 페이지 스크롤에 그대로 넘긴다
+      if (
+        dir === 0 ||
+        (dir > 0 && target.current === N - 1) ||
+        (dir < 0 && target.current === 0)
+      ) {
+        wheelAcc.current = 0;
+        return;
       }
+
+      /* 목록 위에서 굴린 휠은 지점 선택으로 쓴다. 취소는 지금 결정해야 한다 —
+         preventDefault 는 소급되지 않으므로, 문턱을 넘은 이벤트에서만 부르면
+         트랙패드(한 번에 3~10px)에서는 60 이 차기까지 열 번 넘게 페이지가 이미
+         스크롤돼 섹션이 화면 밖으로 밀려난다. 문턱은 "몇 번 굴려야 한 칸인가" 이지
+         "언제부터 가로챌 것인가" 가 아니다 */
       e.preventDefault();
+
+      /* 방향이 바뀌거나 한참 만에 다시 굴리면 앞의 누적은 다른 동작이다.
+         남겨 두면 그냥 지나가려던 굴림이 엉뚱한 지점 선택으로 튄다 */
+      const now = e.timeStamp || performance.now();
+      if (dir !== wheelDir.current || now - wheelAt.current > WHEEL_IDLE_MS) {
+        wheelAcc.current = 0;
+      }
+      wheelDir.current = dir;
+      wheelAt.current = now;
 
       wheelAcc.current += e.deltaY;
       if (Math.abs(wheelAcc.current) < WHEEL_THRESHOLD) return;
+
       moveTo(target.current + Math.sign(wheelAcc.current));
       wheelAcc.current = 0;
     };
@@ -152,6 +185,8 @@ export default function Franchise() {
     return () => {
       el.removeEventListener("wheel", onWheel);
       if (raf.current) cancelAnimationFrame(raf.current);
+      // 분기가 바뀌어도 다음 moveTo 가 루프를 다시 시작할 수 있게 비운다
+      raf.current = 0;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isCompact]);
@@ -174,7 +209,7 @@ export default function Franchise() {
                   <button
                     key={b.name}
                     type="button"
-                    onClick={() => setActiveIdx(i)}
+                    onClick={() => moveTo(i)}
                     aria-current={on ? "true" : undefined}
                     className={`shrink-0 rounded-[9999px] px-[16px] py-[9px] font-pretendard whitespace-nowrap transition-colors duration-300 md:px-[20px] md:py-[11px] ${
                       on
@@ -204,10 +239,13 @@ export default function Franchise() {
           {/* 사진 — 패널 아래 */}
           <div className="relative w-full overflow-hidden bg-[#d9d9d9] pt-[68%] md:pt-[56%]">
             {BRANCHES.map((b, i) => (
-              <img
+              <Img
                 key={b.name}
                 src={b.image}
                 alt={`${b.name} 외관`}
+                // 첫 화면 한참 아래라 눈에 들어올 때 받아도 늦지 않다
+                loading="lazy"
+                decoding="async"
                 className="absolute inset-0 size-full object-cover transition-opacity duration-700"
                 style={{ opacity: i === activeIdx ? 1 : 0 }}
               />
@@ -323,11 +361,16 @@ export default function Franchise() {
               style={{ width: PHOTO_W, height: SECTION_H }}
             >
               {BRANCHES.map((b, i) => (
-                <img
+                <Img
                   key={b.name}
+                  /* React 19 에서는 ref 도 평범한 prop 이라 Img 의 ...rest 를 타고
+                     안쪽 <img> 로 그대로 넘어간다. 켄번즈 재생 제어가 그대로 산다 */
                   ref={(el) => (photoRefs.current[i] = el)}
                   src={b.image}
                   alt={`${b.name} 외관`}
+                  // 지점 사진 3장이 합쳐 수 MB 라 첫 화면 로딩을 밀어내지 않게 미룬다
+                  loading="lazy"
+                  decoding="async"
                   // 아주 느린 켄번즈 — 사진이 멈춰 있지 않고 미세하게 살아 움직인다
                   className="franchise-kenburns absolute inset-0 size-full max-w-none object-cover opacity-0"
                   style={{ animationDelay: `${i * -6}s` }}

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useHydrated } from "./lib/hydrated.js";
 
 /**
  * 스크롤로 화면에 들어올 때 재생되는 등장 모션.
@@ -11,6 +12,10 @@ const EASE = "cubic-bezier(0.22,1,0.36,1)";
 
 export function useInView(threshold = 0.2) {
   const ref = useRef(null);
+  const hydrated = useHydrated();
+  // 서버(프리렌더)와 하이드레이션 첫 렌더는 "보이는" 상태다.
+  // opacity:0 인 채로 HTML 이 굳으면 크롤러와 JS 가 죽은 사용자에게 본문이 사라진 것과 같다.
+  // 관문이 열린 뒤부터 실제 관찰 결과를 쓰므로 등장 모션은 종전 그대로다.
   const [inView, setInView] = useState(false);
 
   useEffect(() => {
@@ -33,9 +38,11 @@ export function useInView(threshold = 0.2) {
     );
     io.observe(el);
     return () => io.disconnect();
-  }, [threshold]);
+  }, [threshold, hydrated]);
+  //             ^^^^^^^^ 관문이 열리며 분기가 갈아끼워질 수 있다.
+  //             다시 관찰하지 않으면 사라진 요소를 계속 보게 되어 모션이 끝내 발동하지 않는다.
 
-  return [ref, inView];
+  return [ref, hydrated ? inView : true];
 }
 
 /** 블록 하나를 아래에서 띄워 올린다 */
@@ -85,7 +92,25 @@ export function RevealText({
   className = "",
 }) {
   const [ref, inView] = useInView(threshold);
+  const hydrated = useHydrated();
   let index = 0;
+
+  // 서버(프리렌더)에서는 글자 단위로 쪼개지 않고 줄 그대로 내보낸다.
+  // 한 글자마다 <span> 을 두르면 브라우저는 텍스트를 합쳐 읽지만,
+  // 단순 추출기는 "압/구/정/곱/창" 처럼 조각난 문자열을 가져간다.
+  // 모션은 어차피 브라우저에서만 도니 서버 출력은 읽기 좋은 쪽이 낫다.
+  // 이제 브라우저의 하이드레이션 렌더도 이 분기를 탄다 — 그래야 이어받을 DOM 이 같다.
+  if (!hydrated) {
+    return (
+      <span ref={ref} className={className}>
+        {lines.map((line, li) => (
+          <span key={li} className="block">
+            {line}
+          </span>
+        ))}
+      </span>
+    );
+  }
 
   return (
     <span ref={ref} className={className}>

@@ -1,4 +1,5 @@
 import Reveal, { RevealText } from "../Reveal.jsx";
+import Img from "../Img.jsx";
 import { asset } from "../lib/asset.js";
 
 /**
@@ -13,7 +14,6 @@ import { asset } from "../lib/asset.js";
  *         ├ 영문 Regular 16 / lh 24 / -0.4 / #767676
  *         └ 메타 행 gap 16 — "라벨 | 값" 묶음, 구분선 1x14 #e5e5ec, 값은 #e61911
  */
-const CARD_W = 402;
 
 /** 메뉴 데이터. 사진 16장 모두 Figma 에셋을 항목별로 받아 연결했다 */
 const SECTIONS = [
@@ -82,9 +82,13 @@ function MenuCard({ item }) {
         className="flex w-full items-center justify-center overflow-hidden bg-[#f6f7fb]"
         style={{ aspectRatio: "1 / 1" }}
       >
-        <img
+        <Img
           src={item.image}
           alt=""
+          /* 메뉴 사진 16장이 모두 대표 이미지 아래에 있어 첫 화면에서는 한 장도 보이지 않는다.
+             전부 한꺼번에 받으면 첫 진입이 느려지므로 화면에 들어올 때 받는다 */
+          loading="lazy"
+          decoding="async"
           /* Figma 332:1160 — shadow 12 12 10 rgba(0,0,0,0.3).
              box-shadow 는 이미지의 사각 박스를 따라가므로 배경이 투명한 누끼 사진에서는
              네모난 그림자가 생긴다. drop-shadow 는 알파 실루엣을 따라간다. */
@@ -142,10 +146,7 @@ export default function MenuList() {
             </div>
 
             {/* Figma 332:1155 — 카드 그리드, gap 24 / 세로 48 */}
-            <div
-              className="grid w-full grid-cols-2 gap-x-[16px] gap-y-[36px] md:gap-x-[24px] md:gap-y-[48px] lg:grid-cols-4"
-              style={{ ["--card-w"]: `${CARD_W}px` }}
-            >
+            <div className="grid w-full grid-cols-2 gap-x-[16px] gap-y-[36px] md:gap-x-[24px] md:gap-y-[48px] lg:grid-cols-4">
               {section.items.map((item, i) => (
                 <Reveal key={item.ko} delay={(i % 4) * 100} y={32}>
                   <MenuCard item={item} />

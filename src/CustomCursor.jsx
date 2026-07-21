@@ -47,7 +47,19 @@ export default function CustomCursor() {
       ring.style.transform = `translate3d(${ringPos.x - RING_SIZE / 2}px, ${ringPos.y - RING_SIZE / 2}px, 0) scale(${scale})`;
       dot.style.transform = `translate3d(${mouse.x - DOT_SIZE / 2}px, ${mouse.y - DOT_SIZE / 2}px, 0)`;
 
+      // 고리가 포인터를 따라잡았으면 멈춘다. 가만히 있는데도 매 프레임 도는 건 낭비다
+      if (
+        Math.abs(mouse.x - ringPos.x) < 0.1 &&
+        Math.abs(mouse.y - ringPos.y) < 0.1 &&
+        Math.abs(targetScale - scale) < 0.001
+      ) {
+        raf = 0;
+        return;
+      }
       raf = requestAnimationFrame(tick);
+    };
+    const start = () => {
+      if (!raf) raf = requestAnimationFrame(tick);
     };
 
     const onMove = (e) => {
@@ -55,6 +67,7 @@ export default function CustomCursor() {
       mouse.y = e.clientY;
       // 커서 아래에 인터랙티브 요소가 있으면 고리를 키운다
       targetScale = e.target?.closest?.(INTERACTIVE) ? 2 : 1;
+      start();
     };
     const onLeave = () => {
       ring.style.opacity = "0";
@@ -68,10 +81,10 @@ export default function CustomCursor() {
     window.addEventListener("pointermove", onMove, { passive: true });
     document.addEventListener("pointerleave", onLeave);
     document.addEventListener("pointerenter", onEnter);
-    raf = requestAnimationFrame(tick);
+    start();
 
     return () => {
-      cancelAnimationFrame(raf);
+      if (raf) cancelAnimationFrame(raf);
       window.removeEventListener("pointermove", onMove);
       document.removeEventListener("pointerleave", onLeave);
       document.removeEventListener("pointerenter", onEnter);

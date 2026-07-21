@@ -15,7 +15,39 @@ import { Btn, Field, INPUT, IconDoc, IconMail, IconOut } from "./ui.jsx";
 const NAV = [
   { to: "/admin/notices", label: "공지사항", icon: <IconDoc />, desc: "글 등록·수정" },
   { to: "/admin/inquiries", label: "문의 관리", icon: <IconMail />, desc: "접수된 문의" },
+  { to: "/admin/seo", label: "검색 최적화", icon: <IconSearch />, desc: "제목·설명·매장 정보" },
+  { to: "/admin/clusters", label: "토픽 클러스터", icon: <IconCluster />, desc: "페이지 묶기" },
 ];
+
+/* 아이콘은 ui.jsx 의 선 두께·모서리 처리를 그대로 따른다.
+   메뉴에만 쓰이는 두 개라 공통 부품으로 빼지 않고 여기 둔다 */
+const stroke = {
+  fill: "none",
+  stroke: "currentColor",
+  strokeWidth: 1.7,
+  strokeLinecap: "round",
+  strokeLinejoin: "round",
+};
+
+function IconSearch() {
+  return (
+    <svg viewBox="0 0 20 20" className="size-[18px]" aria-hidden>
+      <circle cx="9" cy="9" r="5.5" {...stroke} />
+      <path d="M13.2 13.2L17 17" {...stroke} />
+    </svg>
+  );
+}
+
+function IconCluster() {
+  return (
+    <svg viewBox="0 0 20 20" className="size-[18px]" aria-hidden>
+      <circle cx="10" cy="4.5" r="2.2" {...stroke} />
+      <circle cx="4.5" cy="15" r="2.2" {...stroke} />
+      <circle cx="15.5" cy="15" r="2.2" {...stroke} />
+      <path d="M8.6 6.4L5.8 12.9M11.4 6.4l2.8 6.5M6.7 15h6.6" {...stroke} />
+    </svg>
+  );
+}
 
 export default function AdminLayout() {
   const { session, loading } = useSession();
@@ -84,7 +116,14 @@ export default function AdminLayout() {
             </span>
           </div>
           <div className="flex gap-[6px]">
-            <Btn tone="ghost" size="sm" className="flex-1" onClick={() => window.open("/", "_blank")}>
+            {/* 사이트가 도메인 뿌리에 있지 않을 수 있다. "/" 로 열면 하위 경로 배포에서
+                엉뚱한 곳으로 간다 — 빌드가 알고 있는 기준 경로를 쓴다 */}
+            <Btn
+              tone="ghost"
+              size="sm"
+              className="flex-1"
+              onClick={() => window.open(import.meta.env.BASE_URL, "_blank")}
+            >
               사이트 보기
             </Btn>
             <Btn tone="ghost" size="sm" onClick={() => supabase.auth.signOut()} aria-label="로그아웃">
@@ -104,7 +143,8 @@ export default function AdminLayout() {
             로그아웃
           </Btn>
         </div>
-        <nav className="flex gap-[6px]">
+        {/* 메뉴가 넷이라 한 줄에 다 넣으면 좁은 화면에서 글자가 뭉갠다. 두 칸씩 접는다 */}
+        <nav className="grid grid-cols-2 gap-[6px]">
           {NAV.map((item) => (
             <TopLink key={item.to} {...item} />
           ))}

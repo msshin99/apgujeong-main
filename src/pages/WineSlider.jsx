@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Reveal, { RevealText } from "../Reveal.jsx";
 import { useBreakpoint } from "../useBreakpoint.js";
+import Img from "../Img.jsx";
 import { asset } from "../lib/asset.js";
 
 /**
@@ -59,7 +60,7 @@ const DRAG_THRESHOLD = 60;
 
 /**
  * 와인 목록. 사진은 Figma 에셋 5장을 그대로 받아 왔다.
- * 슬롯이 7개라 5장이 순환하며 가장자리(잘리는 자리)에서 반복되는데,
+ * 슬롯이 11개(가운데 + 좌우 5장)라 5장이 순환하며 가장자리(잘리는 자리)에서 반복되는데,
  * 이는 Figma 시안도 동일하게 같은 사진을 재사용한 구성이다.
  */
 const WINES = [
@@ -102,7 +103,8 @@ function ArrowButton({ dir, onClick, label }) {
       type="button"
       onClick={onClick}
       aria-label={label}
-      className="group flex size-[46px] items-center justify-center rounded-full border border-[#e5e5ec] bg-white transition-colors duration-300 hover:border-[#e61911] hover:bg-[#e61911] md:size-[52px]"
+      /* 키보드로 넘길 때 지금 어느 화살표에 있는지 보이도록 초점 테두리를 남긴다 */
+      className="group flex size-[46px] items-center justify-center rounded-full border border-[#e5e5ec] bg-white transition-colors duration-300 hover:border-[#e61911] hover:bg-[#e61911] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#e61911] md:size-[52px]"
     >
       <svg
         viewBox="0 0 22 22"
@@ -219,7 +221,9 @@ export default function WineSlider() {
               onPointerMove={onPointerMove}
               onPointerUp={endDrag}
               onPointerCancel={endDrag}
-              className="relative w-full cursor-grab touch-pan-y outline-none select-none active:cursor-grabbing"
+              /* 탭으로 가장 먼저 닿는 곳이자 좌우 방향키가 실제로 걸린 곳이다.
+                 화살표 버튼과 같은 초점 테두리를 줘 지금 여기 있다는 걸 보이게 한다 */
+              className="relative w-full cursor-grab touch-pan-y select-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#e61911] active:cursor-grabbing"
               style={{ height: CENTER_H * scale }}
             >
               {SLOTS.map((slot) => {
@@ -247,10 +251,14 @@ export default function WineSlider() {
                     }}
                   >
                     <div className="flex size-full items-center justify-center overflow-hidden bg-[#f6f7fb]">
-                      <img
+                      <Img
                         src={wine.image}
                         alt={isCenter ? wine.ko : ""}
                         draggable={false}
+                        /* 슬라이드는 대표 이미지 아래라 첫 화면에 보이지 않는다.
+                           같은 사진 5장이 슬롯 11개에 반복되므로 한 번 받으면 나머지는 캐시로 붙는다 */
+                        loading="lazy"
+                        decoding="async"
                         /* 누끼 사진이라 box-shadow 대신 실루엣을 따라가는 drop-shadow 를 쓴다.
                            가운데로 올라온 병만 그림자가 짙어져 앞으로 나온 느낌을 준다. */
                         className="max-h-[80%] w-auto max-w-[60%] object-contain"
@@ -287,13 +295,13 @@ export default function WineSlider() {
 
           {/* Figma 332:1494 — 화살표 + (좁은 화면에서는) 현재 위치 표시 */}
           <div className="flex items-center gap-[12px]">
-            <ArrowButton dir="prev" label="이전 와인" onClick={() => move(-1)} />
+            <ArrowButton dir="prev" label="이전 슬라이드" onClick={() => move(-1)} />
             {isCompact && (
               <span className="min-w-[52px] text-center text-[14px] font-medium tracking-[-0.35px] text-[#767676] tabular-nums">
                 {active + 1} / {WINES.length}
               </span>
             )}
-            <ArrowButton dir="next" label="다음 와인" onClick={() => move(1)} />
+            <ArrowButton dir="next" label="다음 슬라이드" onClick={() => move(1)} />
           </div>
         </div>
       </div>

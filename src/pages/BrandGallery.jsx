@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { useBreakpoint } from "../useBreakpoint.js";
+import Img from "../Img.jsx";
 import { asset } from "../lib/asset.js";
 
 /**
@@ -68,11 +69,14 @@ export default function BrandGallery() {
     };
 
     const nodes = panelRefs.current.filter(Boolean);
-    nodes.forEach((el, i) => el.addEventListener("pointerenter", enter(i)));
+    // enter(i) 는 호출할 때마다 새 함수를 만든다.
+    // 해제할 때 같은 참조를 넘겨야 하므로 한 번만 만들어 들고 있는다
+    const handlers = nodes.map((_, i) => enter(i));
+    nodes.forEach((el, i) => el.addEventListener("pointerenter", handlers[i]));
     host.addEventListener("pointerleave", leave);
     return () => {
       if (raf) cancelAnimationFrame(raf);
-      nodes.forEach((el, i) => el.removeEventListener("pointerenter", enter(i)));
+      nodes.forEach((el, i) => el.removeEventListener("pointerenter", handlers[i]));
       host.removeEventListener("pointerleave", leave);
     };
   }, [isCompact]);
@@ -84,7 +88,7 @@ export default function BrandGallery() {
         <div className="grid w-full grid-cols-2" style={{ gap: GAP }}>
           {PANELS.map((p) => (
             <div key={p.id} className="relative w-full overflow-hidden bg-[#d9d9d9] pt-[124%]">
-              <img src={p.image} alt={p.alt} className="absolute inset-0 size-full object-cover" />
+              <Img src={p.image} alt={p.alt} className="absolute inset-0 size-full object-cover" />
             </div>
           ))}
         </div>
@@ -107,7 +111,7 @@ export default function BrandGallery() {
             className="group relative h-full min-w-0 basis-0 overflow-hidden bg-[#d9d9d9]"
             style={{ flexGrow: 1 }}
           >
-            <img
+            <Img
               src={p.image}
               alt={p.alt}
               className="absolute inset-0 size-full max-w-none object-cover brightness-95 transition-[filter] duration-700 ease-out group-hover:brightness-110"

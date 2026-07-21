@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { deleteInquiry, listInquiries, markInquiryRead } from "../../lib/inquiries.js";
 import {
   Badge,
@@ -32,14 +32,21 @@ export default function AdminInquiries() {
   const [failure, setFailure] = useState(null);
   const { toast, view: toasts } = useToast();
 
+  /* 불러오는 중에 화면을 떠날 수 있다. 돌아온 응답으로 사라진 화면을 건드리지 않게 표시해 둔다 */
+  const alive = useRef(true);
+
   const refresh = () =>
     listInquiries()
-      .then(setRows)
-      .catch(setFailure)
-      .finally(() => setLoading(false));
+      .then((list) => alive.current && setRows(list))
+      .catch((err) => alive.current && setFailure(err))
+      .finally(() => alive.current && setLoading(false));
 
   useEffect(() => {
+    alive.current = true;
     refresh();
+    return () => {
+      alive.current = false;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

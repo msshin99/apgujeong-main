@@ -2,6 +2,7 @@ import { useState } from "react";
 import Reveal, { RevealText } from "../Reveal.jsx";
 import { Magnetic } from "../Tilt.jsx";
 import { useBreakpoint } from "../useBreakpoint.js";
+import Img from "../Img.jsx";
 import { asset } from "../lib/asset.js";
 
 /**
@@ -97,10 +98,14 @@ export default function BrandValue() {
             }}
           >
             {SLIDES.map((s, i) => (
-              <img
+              // 네 장이 항상 붙어 있어야 교차 페이드가 되므로 언마운트는 하지 않는다.
+              // 대신 첫 장만 먼저 받고 나머지는 미뤄서 초기 로딩을 가볍게 한다
+              <Img
                 key={s.id}
                 src={s.image}
                 alt=""
+                loading={i === 0 ? "eager" : "lazy"}
+                decoding="async"
                 className="absolute inset-0 size-full object-cover transition-opacity duration-700 ease-out"
                 style={{ opacity: i === index ? 1 : 0 }}
               />
@@ -155,8 +160,12 @@ export default function BrandValue() {
 
               <div className="flex items-center gap-[12px]">
                 {[
-                  { dir: -1, label: "이전 항목", rotate: 180 },
-                  { dir: 1, label: "다음 항목", rotate: 0 },
+                  /* 라벨은 그 버튼이 무엇을 넘기는지 말해야 하므로 화면마다 다르다.
+                     여기(브랜드 가치)와 BrandSpace·WineSlider 는 "슬라이드",
+                     Collection 은 "이전/다음 메뉴", 관리자 달력은 "이전/다음 달"이다.
+                     전부 같은 문구로 맞추려 들면 오히려 뜻이 흐려진다 */
+                  { dir: -1, label: "이전 슬라이드", rotate: 180 },
+                  { dir: 1, label: "다음 슬라이드", rotate: 0 },
                 ].map((btn) => {
                   const button = (
                     <button

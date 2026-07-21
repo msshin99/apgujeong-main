@@ -109,14 +109,16 @@ export default function GlowBackdrop({ blur = 260 }) {
             style={{
               background: "rgba(230,25,17,0.4)",
               filter: `blur(${blur}px)`,
-              animation: `glowDrift${g.drift} ${[8, 11, 9.5][g.drift]}s ease-in-out infinite`,
+              animation: `backdropGlowDrift${g.drift} ${[8, 11, 9.5][g.drift]}s ease-in-out infinite`,
             }}
           />
         </div>
       ))}
 
+      {/* @keyframes 이름은 전역이라 DarkStage 와 같은 이름을 쓰면 나중에 붙은 쪽이 이긴다.
+          컴포넌트 접두어를 붙여 서로 덮어쓰지 않게 한다 */}
       <style>{`
-        @keyframes glowDrift0 {
+        @keyframes backdropGlowDrift0 {
           0%   { transform: translate3d(0, 0, 0) scale(1); opacity: 0.85; }
           20%  { transform: translate3d(48%, -26%, 0) scale(1.45); opacity: 1; }
           40%  { transform: translate3d(22%, 34%, 0) scale(0.72); opacity: 0.7; }
@@ -124,7 +126,7 @@ export default function GlowBackdrop({ blur = 260 }) {
           80%  { transform: translate3d(-12%, -30%, 0) scale(0.85); opacity: 0.8; }
           100% { transform: translate3d(0, 0, 0) scale(1); opacity: 0.85; }
         }
-        @keyframes glowDrift1 {
+        @keyframes backdropGlowDrift1 {
           0%   { transform: translate3d(0, 0, 0) scale(1.12); opacity: 1; }
           20%  { transform: translate3d(-40%, 36%, 0) scale(0.7); opacity: 0.72; }
           40%  { transform: translate3d(-54%, -18%, 0) scale(1.5); opacity: 1; }
@@ -132,7 +134,7 @@ export default function GlowBackdrop({ blur = 260 }) {
           80%  { transform: translate3d(30%, 20%, 0) scale(1.28); opacity: 0.95; }
           100% { transform: translate3d(0, 0, 0) scale(1.12); opacity: 1; }
         }
-        @keyframes glowDrift2 {
+        @keyframes backdropGlowDrift2 {
           0%   { transform: translate3d(0, 0, 0) scale(0.9); opacity: 0.78; }
           20%  { transform: translate3d(38%, 40%, 0) scale(1.42); opacity: 1; }
           40%  { transform: translate3d(56%, -14%, 0) scale(0.74); opacity: 0.7; }

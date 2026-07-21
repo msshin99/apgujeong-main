@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { Children, cloneElement, isValidElement, useEffect, useId, useRef, useState } from "react";
 
 /**
  * 관리자 화면 공통 부품.
@@ -12,18 +12,29 @@ import { useEffect, useRef, useState } from "react";
 export const INPUT =
   "w-full rounded-[8px] border border-[#e3e3e8] bg-white px-[14px] py-[11px] text-[14px] leading-[22px] text-[#1a1a1e] outline-none transition-all duration-150 placeholder:text-[#b0b0b8] hover:border-[#c9c9d1] focus:border-[#1a1a1e] focus:ring-[3px] focus:ring-black/5";
 
-/** 라벨 + 설명 + 입력칸 한 묶음 */
-export function Field({ label, hint, required, className = "", children }) {
+/**
+ * 라벨 + 설명 + 입력칸 한 묶음.
+ *
+ * label 이 글자만 감싸고 입력칸을 감싸지 않으면 화면 낭독기는 이 칸의 이름을 읽지 못한다.
+ * 그래서 자식 입력칸에 id 를 심고 htmlFor 로 이어 준다.
+ * 자식이 여럿이거나 id 를 직접 정해야 하는 칸은 htmlFor 로 받아 쓴다.
+ */
+export function Field({ label, hint, required, htmlFor, className = "", children }) {
+  const autoId = useId();
+  const only = Children.count(children) === 1 ? Children.toArray(children)[0] : null;
+  const single = isValidElement(only) ? only : null;
+  const controlId = htmlFor ?? single?.props.id ?? (single ? autoId : undefined);
+
   return (
     <div className={`flex flex-col gap-[7px] ${className}`}>
-      <label className="flex items-baseline gap-[6px]">
+      <label htmlFor={controlId} className="flex items-baseline gap-[6px]">
         <span className="text-[13px] font-semibold tracking-[-0.33px] text-[#1a1a1e]">
           {label}
         </span>
         {required && <span className="text-[13px] text-[#e61911]">*</span>}
         {hint && <span className="text-[12px] font-normal text-[#9a9aa2]">{hint}</span>}
       </label>
-      {children}
+      {!htmlFor && single && !single.props.id ? cloneElement(single, { id: autoId }) : children}
     </div>
   );
 }
@@ -197,11 +208,20 @@ export function Skeleton({ className = "" }) {
  */
 export function useToast() {
   const [items, setItems] = useState([]);
+  /* 저장 직후 화면을 떠나면 아직 안 끝난 타이머가 사라진 화면의 상태를 건드린다.
+     띄워 둔 타이머를 모아 두었다가 화면이 사라질 때 모두 걷어 낸다 */
+  const timers = useRef([]);
+
+  useEffect(() => () => timers.current.forEach(clearTimeout), []);
 
   const toast = (text, tone = "ok") => {
     const id = Math.random().toString(36).slice(2);
     setItems((list) => [...list, { id, text, tone }]);
-    setTimeout(() => setItems((list) => list.filter((t) => t.id !== id)), 3200);
+    const timer = setTimeout(() => {
+      timers.current = timers.current.filter((t) => t !== timer);
+      setItems((list) => list.filter((t) => t.id !== id));
+    }, 3200);
+    timers.current.push(timer);
   };
 
   const view = (
@@ -230,25 +250,88 @@ export function useToast() {
   return { toast, view };
 }
 
+/* 창 안에서 Tab 으로 갈 수 있는 것들 */
+const FOCUSABLE =
+  'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), summary, [tabindex]:not([tabindex="-1"])';
+
+/**
+ * 지금 열려 있는 창들. 나중에 열린 것이 뒤에 온다.
+ *
+ * 창은 하나만 열린다는 보장이 없다 — 저장에 실패하면 편집 창이 열린 채로
+ * 그 위에 ErrorDialog(이것도 Drawer 다)가 뜬다. 두 창이 각자 window 에서 Tab 을
+ * 가로채면, 아래 창은 "포커스가 내 밖에 있다"며 자기 첫 칸으로 끌어가고 위 창도
+ * 똑같이 해서, 결국 Tab 이 제자리를 맴돌아 '확인' 버튼까지 갈 수가 없다.
+ * 그래서 맨 위 창만 키를 처리한다.
+ */
+const MODAL_STACK = [];
+
 /**
  * 화면 한가운데 뜨는 편집 창.
  *
  * 글쓰기처럼 한 번에 하나만 하는 작업은 시선이 가운데 모이는 편이 집중하기 좋다.
  * 배경을 눌러도, Esc 를 눌러도 닫힌다.
+ * 열려 있는 동안 Tab 은 창 안에서만 돌고, 닫으면 열었던 자리로 포커스를 되돌린다.
  */
 export function Drawer({ open, title, subtitle, onClose, children, footer, width = 560 }) {
+  const panelRef = useRef(null);
+  /* onClose 는 대개 그 자리에서 만든 함수라 그릴 때마다 새것이 된다.
+     그대로 의존성에 넣으면 글자를 칠 때마다 아래 효과가 다시 걸려 포커스가 튄다 */
+  const closeRef = useRef(onClose);
+  closeRef.current = onClose;
+
   // 열려 있는 동안 뒤 배경이 스크롤되면 어지럽다
   useEffect(() => {
     if (!open) return;
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    const onKey = (e) => e.key === "Escape" && onClose();
+
+    /* 창을 연 버튼을 기억해 둔다. 닫은 뒤 포커스가 문서 맨 앞으로 튀면
+       키보드만 쓰는 사람은 방금까지 있던 자리를 잃는다 */
+    const opener = document.activeElement;
+    panelRef.current?.focus();
+
+    /* 맨 위에 있는 동안에만 키를 처리한다는 표시 */
+    const token = {};
+    MODAL_STACK.push(token);
+
+    const onKey = (e) => {
+      if (MODAL_STACK[MODAL_STACK.length - 1] !== token) return;
+      if (e.key === "Escape") {
+        closeRef.current();
+        return;
+      }
+      /* Tab 이 창 밖으로 새어 나가면 가려진 뒤 화면을 더듬게 된다. 안에서 돌게 가둔다 */
+      if (e.key !== "Tab" || !panelRef.current) return;
+      const list = Array.from(panelRef.current.querySelectorAll(FOCUSABLE)).filter(
+        (el) => el.offsetParent !== null || el === document.activeElement,
+      );
+      if (list.length === 0) {
+        e.preventDefault();
+        panelRef.current.focus();
+        return;
+      }
+      const first = list[0];
+      const last = list[list.length - 1];
+      const active = document.activeElement;
+      const inside = panelRef.current.contains(active);
+      if (e.shiftKey && (!inside || active === first)) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && (!inside || active === last)) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
+
     window.addEventListener("keydown", onKey);
     return () => {
       document.body.style.overflow = prev;
       window.removeEventListener("keydown", onKey);
+      const at = MODAL_STACK.indexOf(token);
+      if (at !== -1) MODAL_STACK.splice(at, 1);
+      opener?.focus?.();
     };
-  }, [open, onClose]);
+  }, [open]);
 
   if (!open) return null;
 
@@ -261,11 +344,13 @@ export function Drawer({ open, title, subtitle, onClose, children, footer, width
       />
       <div className="pointer-events-none fixed inset-0 z-[110] flex items-center justify-center p-[16px] md:p-[32px]">
         <section
+          ref={panelRef}
           role="dialog"
           aria-modal="true"
           aria-label={title}
+          tabIndex={-1}
           style={{ maxWidth: width, animation: "admin-pop 260ms cubic-bezier(0.22,1,0.36,1)" }}
-          className="pointer-events-auto flex max-h-full w-full flex-col overflow-hidden rounded-[18px] bg-white shadow-[0_24px_70px_rgba(0,0,0,0.22)]"
+          className="pointer-events-auto flex max-h-full w-full flex-col overflow-hidden rounded-[18px] bg-white shadow-[0_24px_70px_rgba(0,0,0,0.22)] outline-none"
         >
           <style>{`
             @keyframes admin-fade { from { opacity: 0 } to { opacity: 1 } }
@@ -307,7 +392,7 @@ export function Drawer({ open, title, subtitle, onClose, children, footer, width
  */
 const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
 
-export function DateField({ value, onChange }) {
+export function DateField({ id, value, onChange }) {
   const [open, setOpen] = useState(false);
   const selected = parseISO(value) ?? new Date();
   const [cursor, setCursor] = useState(() => new Date(selected.getFullYear(), selected.getMonth(), 1));
@@ -341,6 +426,7 @@ export function DateField({ value, onChange }) {
   return (
     <div ref={boxRef} className="relative">
       <button
+        id={id}
         type="button"
         onClick={() => setOpen((v) => !v)}
         className={`${INPUT} flex items-center justify-between gap-[8px] text-left ${
