@@ -1,15 +1,15 @@
 import { useEffect, useRef, useState } from "react";
-import { DESIGN_H, DESIGN_W, useCanvasScale } from "./useCanvasScale.js";
-import { useBreakpoint } from "./useBreakpoint.js";
 import Img from "./Img.jsx";
 import { asset } from "./lib/asset.js";
 
 /**
  * Figma: Frame 2095588280 (332:2154) — 1920 x 1000
  *
- * 수치는 Figma 실측 그대로 고정 px.
- * 1920x1000 이 아닌 화면에서는 캔버스 전체에 scale 을 걸어 비율만 맞춘다.
- * (scale 은 가로/세로 중 작은 쪽 기준 = contain → 스크롤 없이 한 화면에 다 들어감)
+ * 데스크톱 수치는 Figma 실측 그대로(타이틀 80px, 탭 24px)를 상한으로 두고,
+ * 좁은 화면에서는 유동적으로 줄어드는 단일 반응형 트리다.
+ * (예전엔 캔버스 contain 분기 + isCompact 분기로 나뉘어 있었고,
+ *  캔버스 scale 때문에 라벨 폭을 offsetWidth 로 재는 취약한 훅이 필요했다 —
+ *  이제 콘텐츠 폭으로 자연스럽게 배치되므로 그 측정도, 이중 분기도 사라졌다.)
  */
 const TABS = [
   { id: "flavor", label: "FLAVOR", image: asset("/images/figma/e.png") },
@@ -20,16 +20,15 @@ const TABS = [
 const HEAD = "RICH";
 const TAIL = "JOURNEY";
 
-// Figma 332:779 / 781 / 782 — Shippori Mincho Bold, 80px, line-height 90px
+// Figma 332:779 / 781 / 782 — Shippori Mincho Bold, 80px(데스크톱 상한), line-height 90px(≈1.125em)
+// clamp 로 좁은 화면에서 줄어들고 ~1080px 부터 Figma 80px 로 고정된다.
 const TITLE_TEXT =
-  "font-mincho font-bold uppercase text-white whitespace-nowrap text-[80px] leading-[90px]";
+  "font-mincho font-bold uppercase text-white text-[clamp(26px,7.4vw,80px)] leading-[1.15]";
 
 export default function HeroTabs() {
   const [activeIndex, setActiveIndex] = useState(0);
   const [prevIndex, setPrevIndex] = useState(0);
-  const [labelWidth, setLabelWidth] = useState(0);
   const firstRender = useRef(true);
-  const measureRef = useRef(null);
   const bgRef = useRef(null);
   const contentRef = useRef(null);
 
@@ -37,16 +36,13 @@ export default function HeroTabs() {
   const prev = TABS[prevIndex];
   const isSwapping = prevIndex !== activeIndex;
 
-  // 히어로는 한 화면(100dvh) 안에 다 들어가도록 캔버스를 contain
-  const scale = useCanvasScale();
-  const { isCompact } = useBreakpoint();
-
   useEffect(() => {
     firstRender.current = false;
   }, []);
 
   /* 스크롤로 히어로를 빠져나갈 때 — 배경은 서서히 확대되고,
-     타이틀·탭은 위로 떠오르며 사라진다. 다음 섹션으로 자연스럽게 넘어간다. */
+     타이틀·탭은 위로 떠오르며 사라진다. 다음 섹션으로 자연스럽게 넘어간다.
+     bgRef/contentRef 만 건드리므로 캔버스 스케일과 무관하다. */
   useEffect(() => {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 
@@ -76,23 +72,6 @@ export default function HeroTabs() {
       window.removeEventListener("resize", onScroll);
     };
   }, []);
-
-  /* 라벨 중 가장 긴 것의 폭을 재서 창 폭으로 고정한다.
-     offsetWidth 는 transform(scale) 의 영향을 받지 않으므로 디자인 기준 px 가 그대로 나온다.
-     웹폰트가 늦게 로드되면 폭이 달라지므로 fonts.ready 이후 한 번 더 잰다.
-     compact 로 시작하면 측정 노드가 display:none 인 데스크톱 캔버스 안이라 0 이 나온다.
-     그래서 compact 동안에는 재지 않고, 창을 넓혀 분기가 바뀔 때 다시 잰다. */
-  useEffect(() => {
-    if (isCompact) return;
-    const measure = () => {
-      const el = measureRef.current;
-      if (!el) return;
-      const max = Math.max(...Array.from(el.children, (c) => c.offsetWidth));
-      setLabelWidth(Math.ceil(max));
-    };
-    measure();
-    document.fonts?.ready.then(measure).catch(() => {});
-  }, [isCompact]);
 
   const handleSelect = (i) => {
     if (i === activeIndex) return;
@@ -139,193 +118,89 @@ export default function HeroTabs() {
       {/* 헤더는 이 섹션 밖(App.jsx 의 StickyHeader)에서 화면에 고정된다.
           히어로 안에 두면 스크롤과 함께 위로 사라지기 때문이다. */}
 
-      {/* 1200 미만 — 캔버스를 버리고 유동 레이아웃 */}
-      {isCompact && (
-        <div className="absolute inset-0 z-40 flex flex-col px-[20px] sm:px-[24px] md:px-[40px]">
-          {/* 고정 헤더가 덮는 만큼 위를 비워 둔다 */}
-          <div aria-hidden className="h-[92px] shrink-0" />
-
-          {/* 타이틀 — 화면 중앙 */}
-          <div className="flex flex-1 items-center justify-center">
-            <h1 className="flex flex-wrap items-center justify-center gap-x-[0.3em] gap-y-[0.1em] text-center font-mincho text-[clamp(26px,7.4vw,56px)] leading-[1.15] font-bold text-white uppercase">
-              <span>{HEAD}</span>
-              <span className="inline-flex items-center gap-[0.25em]">
-                <span>(</span>
-                {/* 데스크톱과 같은 아래→위 교체. 폭은 em 기준으로 잡아 괄호가 밀리지 않는다 */}
-                <span className="relative block h-[1.15em] w-[4.6em] overflow-hidden">
-                  {isSwapping && (
-                    // 빠져나가는 라벨은 화면에만 남기고 접근성 트리에서는 뺀다.
-                    // 안 그러면 스크린리더가 "RICH ( FLAVOR JUICY ) JOURNEY" 로 읽는다
-                    <span
-                      key={`m-out-${prev.id}-${activeIndex}`}
-                      aria-hidden
-                      className="absolute inset-x-0 top-0 block animate-[textOutUp_620ms_cubic-bezier(0.76,0,0.24,1)_both] text-center"
-                    >
-                      {prev.label}
-                    </span>
-                  )}
-                  <span
-                    key={`m-in-${active.id}`}
-                    className={`absolute inset-x-0 top-0 block text-center ${
-                      firstRender.current
-                        ? ""
-                        : "animate-[textInUp_620ms_cubic-bezier(0.76,0,0.24,1)_both]"
-                    }`}
-                  >
-                    {active.label}
-                  </span>
-                </span>
-                <span>)</span>
-              </span>
-              <span>{TAIL}</span>
-            </h1>
-          </div>
-
-          {/* 탭 — 하단 3등분 */}
-          <nav
-            role="tablist"
-            aria-label="메뉴 카테고리"
-            className="flex w-full items-center pb-[28px] md:pb-[40px]"
-          >
-            {TABS.map((tab, i) => {
-              const isActive = i === activeIndex;
-              return (
-                <button
-                  key={tab.id}
-                  role="tab"
-                  aria-selected={isActive}
-                  onClick={() => handleSelect(i)}
-                  className={[
-                    "flex flex-1 items-center justify-center py-[18px] md:py-[24px]",
-                    "font-pretendard text-[clamp(13px,3.4vw,20px)] leading-[1.4] tracking-[-0.025em] whitespace-nowrap",
-                    "transition-colors duration-500 outline-none",
-                    isActive
-                      ? "font-bold text-white"
-                      : "font-medium text-[rgba(255,255,255,0.4)]",
-                  ].join(" ")}
-                >
-                  {tab.label}
-                </button>
-              );
-            })}
-          </nav>
-        </div>
-      )}
-
-      {/* 1920x1000 디자인 캔버스 — 1200 이상에서만 */}
+      {/* 중앙 콘텐츠 — 단일 반응형 트리. 스크롤 시 위로 떠오르며 사라지는 층(contentRef). */}
       <div
-        className={`absolute top-1/2 left-1/2 z-40 ${isCompact ? "hidden" : ""}`}
-        style={{
-          width: DESIGN_W,
-          height: DESIGN_H,
-          transform: `translate(-50%, -50%) scale(${scale})`,
-        }}
+        ref={contentRef}
+        className="absolute inset-0 z-40 flex flex-col px-[20px] will-change-transform sm:px-[24px] md:px-[40px] min-[1200px]:px-[120px]"
       >
-        {/* 스크롤에 따라 살짝 떠오르며 사라지는 층 (캔버스 transform 과 충돌하지 않게 안쪽에 둔다) */}
-        <div
-          ref={contentRef}
-          className="absolute inset-0 will-change-transform"
-        >
-          {/* 라벨 폭 측정용 — 레이아웃에 영향을 주지 않는 숨김 노드 */}
-          <span
-            ref={measureRef}
-            aria-hidden
-            className={`${TITLE_TEXT} pointer-events-none absolute top-0 left-0 invisible`}
+        {/* 고정 헤더가 덮는 만큼 위를 비워 둔다 */}
+        <div aria-hidden className="h-[92px] shrink-0 min-[1200px]:h-[120px]" />
+
+        {/* Figma 332:778 — 타이틀 행. 화면 중앙에 두고, 좁은 화면에서는 줄바꿈 허용 */}
+        <div className="flex flex-1 items-center justify-center">
+          <h1
+            className={`flex flex-wrap items-center justify-center gap-x-[0.3em] gap-y-[0.1em] text-center ${TITLE_TEXT}`}
           >
-            {TABS.map((tab) => (
-              <span key={tab.id} className="block">
-                {tab.label}
-              </span>
-            ))}
-          </span>
+            <span>{HEAD}</span>
 
+            {/* Figma 332:780 — 괄호는 고정, 안쪽 라벨만 교차한다.
+                라벨 창 폭을 em 기준(4.6em)으로 잡아 라벨이 바뀌어도 괄호·RICH·JOURNEY 가 밀리지 않는다.
+                (예전엔 offsetWidth 로 폭을 재서 고정했지만, 유동 레이아웃에선 불필요하다) */}
+            <span className="inline-flex items-center gap-[0.25em]">
+              <span>(</span>
 
-          {/* Figma 332:2154 — px 120 / pt 454 / pb 2 */}
-          <div className="flex h-full flex-col items-start px-[120px] pt-[454px] pb-[2px]">
-            {/* Figma 332:2153 — w 1680, h 544, gap 304 */}
-            <div className="flex w-[1680px] flex-col items-center gap-[304px]">
-              {/* Figma 332:778 — 타이틀 행 h 110, gap 32 */}
-              <h1 className="flex items-center gap-[32px]">
-                <span className={TITLE_TEXT}>{HEAD}</span>
-
-                {/* Figma 332:780 — p 10 래퍼 / w 494 고정(가장 긴 라벨 기준)
-                  → 라벨이 바뀌어도 RICH·JOURNEY 가 흔들리지 않는다 */}
-                <span className="flex w-[494px] items-center justify-center p-[10px]">
-                  {/* 괄호는 고정, 안쪽 라벨만 교차한다.
-                    라벨 창 폭을 가장 긴 라벨 기준으로 고정해 괄호가 밀리지 않게 한다. */}
+              {/* line-height(1.15em) 창 안에서 아래 → 위로 밀어올린다 */}
+              <span className="relative block h-[1.15em] w-[4.6em] overflow-hidden">
+                {isSwapping && (
+                  // 빠져나가는 라벨은 화면에만 남기고 접근성 트리에서는 뺀다.
+                  // 안 그러면 스크린리더가 "RICH ( FLAVOR JUICY ) JOURNEY" 로 읽는다
                   <span
-                    className={`${TITLE_TEXT} flex items-center gap-[20px]`}
+                    key={`out-${prev.id}-${activeIndex}`}
+                    aria-hidden
+                    className="absolute inset-x-0 top-0 block animate-[textOutUp_620ms_cubic-bezier(0.76,0,0.24,1)_both] text-center"
                   >
-                    <span>(</span>
-
-                    {/* 90px(line-height) 창 안에서 아래 → 위로 밀어올린다 */}
-                    <span
-                      className="relative block h-[90px] overflow-hidden"
-                      style={{ width: labelWidth || undefined }}
-                    >
-                      {isSwapping && (
-                        // 빠져나가는 라벨은 화면에만 남기고 접근성 트리에서는 뺀다.
-                        // 안 그러면 스크린리더가 "RICH ( FLAVOR JUICY ) JOURNEY" 로 읽는다
-                        <span
-                          key={`out-${prev.id}-${activeIndex}`}
-                          aria-hidden
-                          className="absolute inset-x-0 top-0 block text-center animate-[textOutUp_620ms_cubic-bezier(0.76,0,0.24,1)_both]"
-                        >
-                          {prev.label}
-                        </span>
-                      )}
-                      <span
-                        key={`in-${active.id}`}
-                        className={`absolute inset-x-0 top-0 block text-center ${
-                          firstRender.current
-                            ? ""
-                            : "animate-[textInUp_620ms_cubic-bezier(0.76,0,0.24,1)_both]"
-                        }`}
-                      >
-                        {active.label}
-                      </span>
-                    </span>
-
-                    <span>)</span>
+                    {prev.label}
                   </span>
+                )}
+                <span
+                  key={`in-${active.id}`}
+                  className={`absolute inset-x-0 top-0 block text-center ${
+                    firstRender.current
+                      ? ""
+                      : "animate-[textInUp_620ms_cubic-bezier(0.76,0,0.24,1)_both]"
+                  }`}
+                >
+                  {active.label}
                 </span>
+              </span>
 
-                <span className={TITLE_TEXT}>{TAIL}</span>
-              </h1>
+              <span>)</span>
+            </span>
 
-              {/* Figma 332:822 — w 1680, h 130 / 각 칸 560 (= 1680 / 3), px 10, py 48 */}
-              <nav
-                role="tablist"
-                aria-label="메뉴 카테고리"
-                className="flex w-[1680px] items-center"
-              >
-                {TABS.map((tab, i) => {
-                  const isActive = i === activeIndex;
-                  return (
-                    <button
-                      key={tab.id}
-                      role="tab"
-                      aria-selected={isActive}
-                      onClick={() => handleSelect(i)}
-                      className={[
-                        "flex w-[560px] items-center justify-center px-[10px] py-[48px]",
-                        // Figma 332:824 — Pretendard, 24px, line-height 34px, tracking -0.6px
-                        "font-pretendard text-[24px] leading-[34px] tracking-[-0.6px] whitespace-nowrap",
-                        "transition-colors duration-500 ease-out outline-none",
-                        "focus-visible:underline focus-visible:underline-offset-8",
-                        isActive
-                          ? "font-bold text-white"
-                          : "font-medium text-[rgba(255,255,255,0.3)] hover:text-[rgba(255,255,255,0.6)]",
-                      ].join(" ")}
-                    >
-                      {tab.label}
-                    </button>
-                  );
-                })}
-              </nav>
-            </div>
-          </div>
+            <span>{TAIL}</span>
+          </h1>
         </div>
+
+        {/* Figma 332:822 — 하단 탭. 각 칸 1/3(flex-1), 데스크톱 최대 폭 1680px 로 중앙 정렬 */}
+        <nav
+          role="tablist"
+          aria-label="메뉴 카테고리"
+          className="mx-auto flex w-full max-w-[1680px] items-center pb-[28px] md:pb-[40px] min-[1200px]:pb-[2px]"
+        >
+          {TABS.map((tab, i) => {
+            const isActive = i === activeIndex;
+            return (
+              <button
+                key={tab.id}
+                role="tab"
+                aria-selected={isActive}
+                onClick={() => handleSelect(i)}
+                className={[
+                  "flex flex-1 items-center justify-center py-[18px] md:py-[24px] min-[1200px]:py-[48px]",
+                  // Figma 332:824 — Pretendard, 24px(데스크톱 상한), line-height 34px, tracking -0.6px(≈-0.025em)
+                  "font-pretendard text-[clamp(13px,3.4vw,24px)] leading-[1.4] tracking-[-0.025em] whitespace-nowrap",
+                  "transition-colors duration-500 ease-out outline-none",
+                  "focus-visible:underline focus-visible:underline-offset-8",
+                  isActive
+                    ? "font-bold text-white"
+                    : "font-medium text-[rgba(255,255,255,0.4)] hover:text-[rgba(255,255,255,0.6)]",
+                ].join(" ")}
+              >
+                {tab.label}
+              </button>
+            );
+          })}
+        </nav>
       </div>
 
       <style>{`
