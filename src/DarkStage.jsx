@@ -1,8 +1,6 @@
 import { useEffect, useRef } from "react";
-import { DESIGN_W, useWidthScale } from "./useCanvasScale.js";
 import Heritage from "./Heritage.jsx";
 import Unrivaled from "./Unrivaled.jsx";
-import { useBreakpoint } from "./useBreakpoint.js";
 
 /**
  * Figma: Group 1707481190 (332:624) — 검은 배경 위에 붉은 블러 원 4개가 깔린 구간.
@@ -13,59 +11,37 @@ import { useBreakpoint } from "./useBreakpoint.js";
  *     ├ Heritage  332:631  y 0
  *     └ Unrivaled 332:669  y 2162
  *   블러 원 332:626~629 — 전부 rgba(230,25,17,0.4) + blur(300px)
+ *
+ * 예전에는 1920 캔버스를 transform:scale 로 통째로 줄이는 데스크톱 트리와, 1200 미만용
+ * 유동 트리(compact)를 **따로** 들고 있었다. 그 방식은 두 벌이 어긋나고, Heritage·Unrivaled
+ * 본문이 1200~1440 구간에서 배율(0.63~0.75)을 타 10~12px 로 쪼그라들었다.
+ *
+ * 그래서 4104px 고정 캔버스를 버리고, 세로로 흐르는 **한 벌**로 합친다.
+ *   · 검은 무대는 자식(Heritage·Unrivaled)을 세로로 쌓는 자연 높이 컨테이너가 된다.
+ *   · 붉은 블러 원은 절대 좌표(top 200/1090/2173/3082) 대신 무대 높이의 비율(%)로 깔고,
+ *     크기·블러는 배율 대신 vw 로 두되 1920 값에서 상한을 건다(min()) — 1920 이상에서
+ *     예전 scale 상한(=1)처럼 더 커지지 않는다.
+ *   · 콘텐츠 프레임(compact/isCompact)은 없앤다. Heritage·Unrivaled 는 각자 한 벌로 흐른다.
  */
-const STAGE_H = 4104;
-const CONTENT_LEFT = 368;
-const CONTENT_TOP = 200;
-const UNRIVALED_TOP = 2162; // Figma 332:669 y (332:630 기준)
-
-const GLOW_BLUR = 300;
 
 /**
- * 블러 원.
- * 1920 캔버스 안에 두면 캔버스 경계에서 잘리므로 캔버스 밖(섹션 직속)에 둔다.
- * 가로 위치는 화면의 좌/우 끝을 기준으로 잡아, 화면이 넓든 좁든 항상 밖으로 흘러나간다.
- *   offset 은 Figma 좌표에서 환산한 값 (음수 = 화면 밖으로 나간 거리)
- *   예) 332:629 는 left 1516 + w 800 = 2316 → 1920 기준 오른쪽으로 396 넘침
+ * 붉은 블러 원.
+ * 1920 캔버스 안에 두면 경계에서 잘리므로 무대 직속의 절대 레이어에 둔다.
+ * 가로 위치는 화면 좌/우 끝을 기준으로 잡아, 화면이 넓든 좁든 항상 밖으로 흘러나간다.
+ *   offset — Figma 좌표를 1920 기준 vw 로 환산(음수 = 화면 밖으로 나간 거리)
+ *   top    — 예전 4104 캔버스 안 top 을 무대 높이 대비 %로 환산
+ *   width/height — 1920 기준 vw. 상한(px)을 걸어 1920 이상에서는 커지지 않는다
  */
 const GLOWS = [
-  {
-    id: "a",
-    side: "left",
-    offset: -420,
-    top: 200,
-    width: 922,
-    height: 850.68,
-    drift: 0,
-  },
-  {
-    id: "b",
-    side: "right",
-    offset: -396,
-    top: 1090,
-    width: 800,
-    height: 806.42,
-    drift: 1,
-  },
-  {
-    id: "c",
-    side: "left",
-    offset: -383,
-    top: 2173,
-    width: 800,
-    height: 806.42,
-    drift: 2,
-  },
-  {
-    id: "d",
-    side: "right",
-    offset: -314,
-    top: 3082,
-    width: 800,
-    height: 806.42,
-    drift: 3,
-  },
+  { id: "a", side: "left", offset: "-21.88vw", top: "4.9%", width: "min(922px, 48.02vw)", height: "min(850.68px, 44.31vw)", drift: 0 },
+  { id: "b", side: "right", offset: "-20.63vw", top: "26.6%", width: "min(800px, 41.67vw)", height: "min(806.42px, 42vw)", drift: 1 },
+  { id: "c", side: "left", offset: "-19.95vw", top: "53%", width: "min(800px, 41.67vw)", height: "min(806.42px, 42vw)", drift: 2 },
+  { id: "d", side: "right", offset: "-16.35vw", top: "75.1%", width: "min(800px, 41.67vw)", height: "min(806.42px, 42vw)", drift: 3 },
 ];
+
+/* blur(300px) 도 배율 대신 vw 로 둔다(1920 에서 300px, 1280 에서 200px — 예전 scale 과 동일).
+   좁아질수록 블러 반경이 함께 줄어 저사양 기기의 페인트 부담도 그만큼 가벼워진다. */
+const GLOW_BLUR = "min(300px, 15.63vw)";
 
 // 원마다 다른 주기로 움직여 패턴이 반복돼 보이지 않게 한다.
 // 서로 배수 관계가 아니어서 네 원이 같은 배치로 돌아오기까지 아주 오래 걸린다.
@@ -75,16 +51,16 @@ const DRIFT_DURATION = [8, 11, 9.5, 12.5];
 const GLOW_PULL = [70, -46, 54, -62];
 
 export default function DarkStage() {
-  const scale = useWidthScale();
-  const { isCompact } = useBreakpoint();
   const sectionRef = useRef(null);
   const pullRefs = useRef([]);
 
   /* 마우스를 움직이면 붉은 글로우가 시차를 두고 끌려온다.
-     글로우 자체는 CSS 키프레임으로 떠다니므로, 감싸는 층에 transform 을 준다. */
+     글로우 자체는 CSS 키프레임으로 떠다니므로, 감싸는 층에 transform 을 준다.
+     좌표는 배율이 아니라 무대(host)의 실제 사각형에서 읽으므로 캔버스가 없어도 그대로 성립한다.
+     터치(pointer:coarse)·모션 최소화에서는 아예 붙지 않는다 — 좁은 화면 판단이 따로 필요 없다. */
   useEffect(() => {
     const host = sectionRef.current;
-    if (!host || isCompact) return;
+    if (!host) return;
     if (
       !window.matchMedia("(pointer: fine)").matches ||
       window.matchMedia("(prefers-reduced-motion: reduce)").matches
@@ -137,88 +113,55 @@ export default function DarkStage() {
       host.removeEventListener("pointermove", onMove);
       host.removeEventListener("pointerleave", onLeave);
     };
-  }, [isCompact]);
-
-  /* 1200 미만 — blur(300px) 원 4개는 저사양 기기에서 가장 무거운 요소라
-     같은 붉은 기운을 내는 radial-gradient 2장으로 대체한다.
-     페인트 한 번으로 끝나고 매 프레임 다시 그리지 않는다. */
-  if (isCompact) {
-    return (
-      <section className="relative w-full overflow-hidden bg-black">
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0"
-          style={{
-            backgroundImage:
-              "radial-gradient(60% 28% at 8% 14%, rgba(230,25,17,0.30) 0%, rgba(230,25,17,0) 70%)," +
-              "radial-gradient(62% 26% at 96% 62%, rgba(230,25,17,0.26) 0%, rgba(230,25,17,0) 70%)",
-          }}
-        />
-        <div className="relative flex flex-col gap-[96px] px-[20px] py-[80px] sm:px-[24px] md:gap-[140px] md:px-[40px] md:py-[120px]">
-          <Heritage compact />
-          <Unrivaled compact />
-        </div>
-      </section>
-    );
-  }
+  }, []);
 
   return (
     <section
       ref={sectionRef}
-      className="relative w-full overflow-hidden bg-[#000000]"
-      style={{ height: STAGE_H * scale }}
+      className="relative w-full overflow-hidden bg-[#000000] py-[80px] md:py-[120px] xl:py-[200px]"
     >
-      {/* Figma 332:626~629 — 붉은 블러 원. 화면 전체 폭 기준으로 배치된다.
-          바깥 층은 커서를 따라 밀리고, 안쪽 층은 CSS 로 계속 떠다닌다 */}
-      {GLOWS.map((g, i) => (
-        <div
-          key={g.id}
-          ref={(el) => (pullRefs.current[i] = el)}
-          aria-hidden
-          className="pointer-events-none absolute will-change-transform"
-          style={{
-            top: g.top * scale,
-            width: g.width * scale,
-            height: g.height * scale,
-            [g.side]: g.offset * scale,
-          }}
-        >
+      {/* Figma 332:626~629 — 붉은 블러 원. 무대 전체를 덮는 절대 레이어에 깔고
+          화면 좌/우 끝을 기준으로 배치한다. 바깥 층은 커서를 따라 밀리고,
+          안쪽 층은 CSS 로 계속 떠다닌다 */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 overflow-hidden"
+      >
+        {GLOWS.map((g, i) => (
           <div
-            className="dark-glow size-full rounded-[9999px] will-change-transform"
+            key={g.id}
+            ref={(el) => (pullRefs.current[i] = el)}
+            className="absolute will-change-transform"
             style={{
-              background: "rgba(230,25,17,0.4)",
-              filter: `blur(${GLOW_BLUR * scale}px)`,
-              animation: `stageGlowDrift${g.drift} ${DRIFT_DURATION[g.drift]}s ease-in-out infinite`,
+              top: g.top,
+              width: g.width,
+              height: g.height,
+              [g.side]: g.offset,
             }}
-          />
-        </div>
-      ))}
-
-      <div className="flex justify-center">
-        <div
-          className="origin-top relative shrink-0"
-          style={{
-            width: DESIGN_W,
-            height: STAGE_H,
-            transform: `scale(${scale})`,
-          }}
-        >
-          {/* Figma 332:630 — 콘텐츠 프레임 1200 폭 */}
-          <div
-            className="absolute"
-            style={{ left: CONTENT_LEFT, top: CONTENT_TOP, width: 1200 }}
           >
-            <Heritage />
-            <div style={{ position: "absolute", top: UNRIVALED_TOP, left: 0 }}>
-              <Unrivaled />
-            </div>
+            <div
+              className="dark-glow size-full rounded-[9999px] will-change-transform"
+              style={{
+                background: "rgba(230,25,17,0.4)",
+                filter: `blur(${GLOW_BLUR})`,
+                animation: `stageGlowDrift${g.drift} ${DRIFT_DURATION[g.drift]}s ease-in-out infinite`,
+              }}
+            />
           </div>
-        </div>
+        ))}
+      </div>
+
+      {/* Figma 332:630 — 콘텐츠 프레임(예전 1200 폭). 캔버스를 줄이지 않고 컨테이너를
+          가운데 두므로 1920 에서 예전 프레임 위치와 맞는다. z-10 으로 글로우 위에 얹는다.
+          1200 이상에서는 좌우 여백을 없애 1200px Unrivaled 원반이 잘리지 않게 한다 */}
+      <div className="relative z-10 mx-auto flex w-full max-w-[1200px] flex-col gap-[96px] px-[20px] sm:px-[24px] md:gap-[140px] md:px-[40px] xl:gap-[160px] xl:px-0">
+        <Heritage />
+        <Unrivaled />
       </div>
 
       {/* 제자리에서 떠도는 움직임.
           키프레임을 4단계로 쪼개 궤적이 한 방향 왕복이 아니라 불규칙한 곡선을 그리게 한다.
-          이동량을 %로 두면 원 크기에 비례하므로 화면 배율이 바뀌어도 느낌이 같다.
+          이동량을 %로 두면 원 크기에 비례하므로 화면 폭이 바뀌어도 느낌이 같다.
           @keyframes 이름은 전역이라 GlowBackdrop 과 겹치지 않게 접두어를 붙였다. */}
       <style>{`
         @keyframes stageGlowDrift0 {
