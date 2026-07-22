@@ -1,7 +1,6 @@
 import { useState } from "react";
 import Reveal, { RevealText } from "../Reveal.jsx";
 import { Magnetic } from "../Tilt.jsx";
-import { useBreakpoint } from "../useBreakpoint.js";
 import Img from "../Img.jsx";
 import { asset } from "../lib/asset.js";
 
@@ -15,10 +14,15 @@ import { asset } from "../lib/asset.js";
  *         ├ Point 배지(#e61911) + 소제목, gap 12
  *         ├ 설명
  *         └ 카운터 "1 ▬ 4" + 화살표 버튼
+ *
+ * 예전에는 1200 이상용 1920 캔버스 축소본과 1200 미만용 유동 레이아웃을 useBreakpoint(isCompact)
+ * 로 갈라 들고 있었다. 사진(642)·본문(776)을 px 로 못박은 탓에 1200~1526 구간에서 한 줄에 다
+ * 들어가지 못하고 넘쳤다. 그래서 형제 섹션 BrandSpace 와 같은 방식으로, 배율·isCompact 분기를
+ * 버리고 CSS 로만 흐르는 한 벌로 합친다.
+ *   · 사진은 aspect-ratio(642/380)를 항상 유지하고, xl 에서만 642 폭으로 고정한다.
+ *   · 본문은 xl 에서 flex-1(상한 776)로 남는 폭을 채운다 — 1200~1526 에서도 넘치지 않는다.
+ *   · Magnetic 은 canHover() 로 스스로 터치·모션축소를 걸러내므로 조건 없이 항상 감싼다.
  */
-const TRACK_W = 98;
-const PHOTO_W = 642;
-const PHOTO_H = 380;
 
 /** Figma 332:1003 / 1004 / 1005. 1번만 원본이고 나머지는 자리표시자 */
 const SLIDES = [
@@ -55,7 +59,6 @@ const SLIDES = [
 const N = SLIDES.length;
 
 export default function BrandValue() {
-  const { isCompact } = useBreakpoint();
   const [index, setIndex] = useState(0);
   const slide = SLIDES[index];
 
@@ -64,39 +67,35 @@ export default function BrandValue() {
   return (
     /* 앞이 검은 블록이라 위에도 200 을 준다.
        마지막 섹션이므로 아래는 푸터와의 간격 200. */
-    <section className="w-full bg-white px-[20px] pt-[100px] pb-[100px] sm:px-[24px] md:px-[40px] md:pt-[150px] md:pb-[150px] lg:pt-[200px] lg:pb-[200px]">
+    <section className="w-full bg-white px-[20px] pt-[100px] pb-[100px] sm:px-[24px] md:px-[40px] md:pt-[150px] md:pb-[150px] xl:pt-[200px] xl:pb-[200px]">
       <div className="mx-auto flex w-full max-w-[1680px] flex-col gap-[32px] font-pretendard md:gap-[40px]">
         {/* Figma 332:991 — 헤더 */}
-        <div className="flex w-full max-w-[666px] flex-col items-start gap-[14px] lg:gap-[24px]">
+        <div className="flex w-full max-w-[666px] flex-col items-start gap-[14px] xl:gap-[24px]">
           {/* Figma 332:992 — Pretendard Medium 20 / lh 30 / -0.5 / #e61911 */}
           <Reveal y={16} duration={600}>
-            <p className="text-[15px] leading-[22px] font-medium tracking-[-0.38px] text-[#e61911] md:text-[18px] lg:text-[20px] lg:leading-[30px] lg:tracking-[-0.5px]">
+            <p className="text-[15px] leading-[22px] font-medium tracking-[-0.38px] text-[#e61911] md:text-[18px] xl:text-[20px] xl:leading-[30px] xl:tracking-[-0.5px]">
               CORE VALUE
             </p>
           </Reveal>
-          {/* Figma 332:994 — Pretendard Bold 46 / lh 60 / -1.15 / 검정 */}
+          {/* Figma 332:994 — Pretendard Bold 46 / lh 60 / -1.15 / 검정.
+              큰 제목은 clamp 로 676~1199 구간도 매끈하게 잇는다(계단식 점프 방지) */}
           <h2 className="text-[clamp(24px,5.2vw,46px)] leading-[1.3] font-bold tracking-[-0.025em] text-black">
             <RevealText lines={["브랜드가 약속하는 최상의 맛과 가치"]} delay={80} step={22} />
           </h2>
           {/* Figma 332:995 — Pretendard Regular 18 / lh 26 / -0.45 / #767676 */}
           <Reveal delay={360} y={16} duration={600}>
-            <p className="text-[14px] leading-[22px] font-normal tracking-[-0.35px] text-[#767676] md:text-[16px] lg:text-[18px] lg:leading-[26px] lg:tracking-[-0.45px]">
+            <p className="text-[14px] leading-[22px] font-normal tracking-[-0.35px] text-[#767676] md:text-[16px] xl:text-[18px] xl:leading-[26px] xl:tracking-[-0.45px]">
               정직한 식재료와 장인의 손길로 완성되는 프리미엄 곱창의 표준을 제시합니다.
             </p>
           </Reveal>
         </div>
 
-        {/* Figma 332:997 — 사진 + 본문, gap 28 */}
-        <div className="flex w-full flex-col gap-[20px] lg:flex-row lg:items-center lg:gap-[28px]">
-          {/* Figma 332:998 — 642 x 380, radius 16 */}
-          <div
-            className="relative w-full shrink-0 overflow-hidden rounded-[16px] bg-[#d9d9d9]"
-            style={{
-              width: isCompact ? undefined : PHOTO_W,
-              height: isCompact ? undefined : PHOTO_H,
-              aspectRatio: isCompact ? `${PHOTO_W} / ${PHOTO_H}` : undefined,
-            }}
-          >
+        {/* Figma 332:997 — 사진 + 본문, gap 28. xl 에서만 가로로 편다 */}
+        <div className="flex w-full flex-col gap-[20px] xl:flex-row xl:items-center xl:gap-[28px]">
+          {/* Figma 332:998 — 642 x 380, radius 16.
+              aspect-ratio 를 항상 유지해 좁은 화면에선 폭에 맞춰 높이가 따라오고,
+              xl 에서만 642 폭으로 고정한다(shrink-0 로 본문에 밀리지 않는다) */}
+          <div className="relative aspect-[642/380] w-full shrink-0 overflow-hidden rounded-[16px] bg-[#d9d9d9] xl:w-[642px]">
             {SLIDES.map((s, i) => (
               // 네 장이 항상 붙어 있어야 교차 페이드가 되므로 언마운트는 하지 않는다.
               // 대신 첫 장만 먼저 받고 나머지는 미뤄서 초기 로딩을 가볍게 한다
@@ -114,9 +113,10 @@ export default function BrandValue() {
             <div aria-hidden className="absolute inset-0 bg-[rgba(0,0,0,0.2)]" />
           </div>
 
-          {/* Figma 332:999 — 776 폭, p 40, 세로 gap 80 */}
-          <div className="flex w-full flex-col items-start gap-[32px] lg:w-[776px] lg:shrink-0 lg:gap-[80px] lg:p-[40px]">
-            <div className="flex w-full flex-col items-start gap-[14px] lg:gap-[20px]">
+          {/* Figma 332:999 — 776 폭, p 40, 세로 gap 80.
+              xl 에서 flex-1(상한 776)로 남는 폭을 채워 1200~1526 에서도 한 줄에 들어간다 */}
+          <div className="flex w-full flex-col items-start gap-[32px] xl:min-w-0 xl:max-w-[776px] xl:flex-1 xl:gap-[80px] xl:p-[40px]">
+            <div className="flex w-full flex-col items-start gap-[14px] xl:gap-[20px]">
               {/* Figma 332:1001 — 배지 + 소제목, gap 12 */}
               <div className="flex flex-wrap items-center gap-[12px]">
                 {/* Figma 332:1002 — bg #e61911, px 22 / py 8, radius 999 */}
@@ -124,7 +124,7 @@ export default function BrandValue() {
                   {slide.point}
                 </span>
                 {/* Figma 332:1004 — Pretendard Bold 28 / lh 36 / -0.7 / #222 */}
-                <p className="text-[20px] leading-[28px] font-bold tracking-[-0.5px] text-[#222] md:text-[24px] lg:text-[28px] lg:leading-[36px] lg:tracking-[-0.7px]">
+                <p className="text-[20px] leading-[28px] font-bold tracking-[-0.5px] text-[#222] md:text-[24px] xl:text-[28px] xl:leading-[36px] xl:tracking-[-0.7px]">
                   {slide.title}
                 </p>
               </div>
@@ -132,7 +132,7 @@ export default function BrandValue() {
               {/* Figma 332:1005 — Pretendard Regular 18 / lh 26 / -0.45 / #767676 */}
               <p
                 key={slide.id}
-                className="w-full text-[14px] leading-[22px] font-normal tracking-[-0.35px] text-[#767676] md:text-[16px] md:leading-[24px] lg:text-[18px] lg:leading-[26px] lg:tracking-[-0.45px]"
+                className="w-full text-[14px] leading-[22px] font-normal tracking-[-0.35px] text-[#767676] md:text-[16px] md:leading-[24px] xl:text-[18px] xl:leading-[26px] xl:tracking-[-0.45px]"
               >
                 {slide.desc}
               </p>
@@ -144,13 +144,12 @@ export default function BrandValue() {
                 <p className="text-[16px] leading-[24px] font-medium tracking-[-0.4px] text-[#222]">
                   {index + 1}
                 </p>
-                <div
-                  className="h-[2px] overflow-hidden rounded-[9999px] bg-[#f6f7fb]"
-                  style={{ width: TRACK_W }}
-                >
+                {/* Figma 332:1114 — 트랙 98. 좁은 화면에선 72 로 줄이고 md 부터 원본 98.
+                    진행 표시는 트랙 폭과 무관하게 scaleX 비율로 그리므로 폭이 유동이어도 그대로다 */}
+                <div className="h-[2px] w-[72px] overflow-hidden rounded-[9999px] bg-[#f6f7fb] md:w-[98px]">
                   <div
-                    className="h-full origin-left rounded-[9999px] bg-[#222] transition-transform duration-500 ease-out"
-                    style={{ width: TRACK_W, transform: `scaleX(${(index + 1) / N})` }}
+                    className="h-full w-full origin-left rounded-[9999px] bg-[#222] transition-transform duration-500 ease-out"
+                    style={{ transform: `scaleX(${(index + 1) / N})` }}
                   />
                 </div>
                 <p className="text-[16px] leading-[24px] font-medium tracking-[-0.4px] text-[#999]">
@@ -166,8 +165,10 @@ export default function BrandValue() {
                      전부 같은 문구로 맞추려 들면 오히려 뜻이 흐려진다 */
                   { dir: -1, label: "이전 슬라이드", rotate: 180 },
                   { dir: 1, label: "다음 슬라이드", rotate: 0 },
-                ].map((btn) => {
-                  const button = (
+                ].map((btn) => (
+                  // Magnetic 은 canHover() 로 터치·모션축소 환경을 스스로 걸러 내므로(그때는 그냥 감싸기만
+                  // 한다) isCompact 분기 없이 항상 감싼다 — 덕분에 서버·클라이언트가 같은 트리를 그린다
+                  <Magnetic key={btn.dir} strength={0.4}>
                     <button
                       type="button"
                       aria-label={btn.label}
@@ -182,15 +183,8 @@ export default function BrandValue() {
                         style={{ transform: `rotate(${btn.rotate}deg)` }}
                       />
                     </button>
-                  );
-                  return isCompact ? (
-                    <div key={btn.dir}>{button}</div>
-                  ) : (
-                    <Magnetic key={btn.dir} strength={0.4}>
-                      {button}
-                    </Magnetic>
-                  );
-                })}
+                  </Magnetic>
+                ))}
               </div>
             </div>
           </div>

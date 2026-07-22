@@ -1,8 +1,6 @@
 import { Link, useLocation } from "react-router-dom";
 import StickyHeader from "../StickyHeader.jsx";
 import Footer from "../Footer.jsx";
-import { useWidthScale } from "../useCanvasScale.js";
-import { useBreakpoint } from "../useBreakpoint.js";
 import Reveal, { RevealText } from "../Reveal.jsx";
 import FaqSection from "../FaqSection.jsx";
 import Img from "../Img.jsx";
@@ -21,9 +19,16 @@ import { internalLinksFor } from "../lib/seo.js";
  *
  * 홈은 헤더가 히어로 사진 위에 얹히지만 하위 페이지에는 사진이 없으므로
  * 검은 바 위에 같은 헤더를 올린다.
+ *
+ * 예전에는 1920 캔버스를 통째로 줄이는 데스크톱 트리(TOP_GAP·HERO_H 에 useWidthScale
+ * 배율을 곱함)와 1200 미만용 유동 트리(isCompact)를 **따로** 들고 있었다. 그 방식은
+ * 1200~1440 구간에서 여백·히어로가 배율(0.63~0.75)을 타 원래보다 쪼그라들었다.
+ * 그래서 캔버스 배율을 버리고 폭에 따라 CSS 로만 흐르는 **한 벌**로 바꾼다.
+ *   · 제목 블록 위 여백은 배율 대신 브레이크포인트로 단을 밟아 키우고, xl(1200+)에서
+ *     Figma 값 160px 에 도달한다(1920 사용자는 바뀐 걸 못 느낀다).
+ *   · 히어로 높이는 compact 가 이미 쓰던 clamp 를 전 폭으로 넓혀, 좁은 화면에서 220px
+ *     띠로 시작해 데스크톱에서 Figma 값 560px 로 커진다.
  */
-const TOP_GAP = 160; // 헤더 아래 여백 (Figma 332:984 y 256 - 헤더 96)
-const HERO_H = 560; // Figma 332:988
 
 export default function PageShell({
   label,
@@ -40,8 +45,6 @@ export default function PageShell({
   seoContext,
   children,
 }) {
-  const scale = useWidthScale();
-  const { isCompact } = useBreakpoint();
   const { pathname } = useLocation();
 
   /* head 동기화. 하위 페이지는 전부 이 껍데기를 거치므로 여기 한 곳이면 된다.
@@ -55,13 +58,14 @@ export default function PageShell({
       <StickyHeader variant="solid" />
 
       <main className="flex-1">
-        {/* Figma 332:985 — 제목 블록 */}
-        <div
-          className="flex w-full flex-col items-center gap-[16px] px-[20px] text-center font-pretendard sm:px-[24px] md:px-[40px]"
-          style={{ paddingTop: isCompact ? 56 : TOP_GAP * scale }}
-        >
+        {/* Figma 332:985 — 제목 블록. 헤더 아래 여백은 배율 대신 단을 밟는다.
+            이 저장소는 lg·xl·2xl 이 전부 1200px 이라 그 사이 중간 단이 없으므로,
+            676~1199 이 한 번에 뛰지 않게 min-[900px]: 로 중간 단을 직접 넣고
+            xl(1200+)에서 Figma 여백 160px 에 도달한다 */}
+        <div className="flex w-full flex-col items-center gap-[16px] px-[20px] pt-[56px] text-center font-pretendard sm:px-[24px] md:px-[40px] md:pt-[96px] min-[900px]:pt-[128px] xl:pt-[160px]">
           <Reveal y={16} duration={600}>
-            <p className="text-[15px] leading-[22px] font-medium tracking-[-0.38px] text-[#e61911] md:text-[18px] md:leading-[26px] lg:text-[20px] lg:leading-[28px] lg:tracking-[-0.5px]">
+            {/* Figma 332:986 — Pretendard Medium 20 / lh 28 / -0.5 / #e61911 */}
+            <p className="text-[15px] leading-[22px] font-medium tracking-[-0.38px] text-[#e61911] md:text-[18px] md:leading-[26px] xl:text-[20px] xl:leading-[28px] xl:tracking-[-0.5px]">
               {label}
             </p>
           </Reveal>
@@ -71,12 +75,11 @@ export default function PageShell({
           </h1>
         </div>
 
-        {/* Figma 332:988 — 전체 폭 대표 이미지 */}
+        {/* Figma 332:988 — 전체 폭 대표 이미지. 높이는 배율 대신 clamp 로 흐른다.
+            좁은 화면에서 220px 띠로 시작해, ~1650px 부근에서 Figma 값 560px 에 닿아
+            그대로 머문다(1920 사용자는 예전과 같은 560px 를 본다) */}
         {hero && (
-          <div
-            className="relative mt-[36px] w-full overflow-hidden bg-[#d9d9d9] md:mt-[48px]"
-            style={{ height: isCompact ? undefined : HERO_H * scale }}
-          >
+          <div className="relative mt-[36px] h-[clamp(220px,34vw,560px)] w-full overflow-hidden bg-[#d9d9d9] md:mt-[48px]">
             <Img
               src={image}
               alt=""
@@ -86,9 +89,7 @@ export default function PageShell({
               fetchPriority="high"
               decoding="async"
               style={{ objectPosition: imagePosition }}
-              className={`w-full object-cover ${
-                isCompact ? "h-[clamp(220px,46vw,420px)]" : "absolute inset-0 size-full"
-              }`}
+              className="absolute inset-0 size-full object-cover"
             />
           </div>
         )}
