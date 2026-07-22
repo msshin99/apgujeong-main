@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Reveal, { RevealText } from "../Reveal.jsx";
-import { useBreakpoint } from "../useBreakpoint.js";
 import Img from "../Img.jsx";
 import { asset } from "../lib/asset.js";
 
@@ -31,7 +30,8 @@ function offsetOf(n) {
 }
 
 /**
- * 좌우 5장씩 그린다. 눈에 보이는 것은 3장까지(바깥 두 장은 화면 밖으로 잘린다)이고,
+ * 가운데를 기준으로 좌우 5장씩, 총 11개 슬롯(HALF*2+1)을 그린다.
+ * 눈에 보이는 것은 좌우 3장까지(3번째는 opacityOf 로 반쯤 흐려지며 화면 밖으로 잘린다)이고,
  * 4~5번째는 투명도 0 인 대기석이다.
  *
  * 카드를 "슬롯"이 아니라 "와인"에 묶어야 한 칸씩 옆으로 밀려나는 움직임이 나온다.
@@ -40,7 +40,7 @@ function offsetOf(n) {
  * 생성·소멸이 보이지 않게 감춘다.
  */
 const HALF = 5;
-const SLOTS = Array.from({ length: HALF * 2 + 1 }, (_, i) => i - HALF);
+const SLOTS = Array.from({ length: HALF * 2 + 1 }, (_, i) => i - HALF); // 길이 11
 
 /** 슬롯 위치별 투명도 — 4번째부터는 대기석이라 보이지 않는다 */
 function opacityOf(n) {
@@ -131,7 +131,6 @@ export default function WineSlider() {
      카드가 반대편으로 순간이동해 버린다. */
   const [pos, setPos] = useState(0);
   const active = mod(pos, WINES.length);
-  const { isCompact } = useBreakpoint();
 
   /* 시안은 1560 폭을 기준으로 그려져 있다. 좁은 화면에서는 통째로 축소해
      카드 사이 여백 비율이 무너지지 않게 한다(비율이 같으니 겹칠 일이 없다). */
@@ -293,14 +292,15 @@ export default function WineSlider() {
             </div>
           </div>
 
-          {/* Figma 332:1494 — 화살표 + (좁은 화면에서는) 현재 위치 표시 */}
+          {/* Figma 332:1494 — 화살표 + (좁은 화면에서는) 현재 위치 표시.
+             위치 표시는 isCompact(1200 미만) 분기를 CSS 로 옮긴 것 —
+             항상 DOM 에 있고 min-[1200px] 부터 display:none 이라
+             프리렌더/하이드레이션 트리가 어긋나지 않는다. */}
           <div className="flex items-center gap-[12px]">
             <ArrowButton dir="prev" label="이전 슬라이드" onClick={() => move(-1)} />
-            {isCompact && (
-              <span className="min-w-[52px] text-center text-[14px] font-medium tracking-[-0.35px] text-[#767676] tabular-nums">
-                {active + 1} / {WINES.length}
-              </span>
-            )}
+            <span className="min-w-[52px] text-center text-[14px] font-medium tracking-[-0.35px] text-[#767676] tabular-nums min-[1200px]:hidden">
+              {active + 1} / {WINES.length}
+            </span>
             <ArrowButton dir="next" label="다음 슬라이드" onClick={() => move(1)} />
           </div>
         </div>
