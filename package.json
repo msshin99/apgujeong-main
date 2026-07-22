@@ -15,10 +15,22 @@
     "//prerender": "dist 가 이미 있을 때 프리렌더만 다시 돌린다(디버깅용). 혼자 돌리면 seo-assets 가 읽을 매니페스트만 남으므로 seo:assets 도 이어서 돌릴 것.",
     "prerender": "node scripts/prerender.mjs",
     "seo:assets": "node scripts/seo-assets.mjs",
+    "//visual": "시각 회귀 검사. **빌드에 일부러 걸지 않았다** — 63장을 찍는 데 몇 분이 걸리고, 필요한 때는 레이아웃을 건드릴 때뿐이다. 순서: (1) 손대기 전에 visual:baseline 으로 지금 화면을 붙잡아 두고 (2) 고친 뒤 npm run build && npm run visual:check. 차이가 있으면 종료코드 1 과 함께 '어떤 요소가 몇 px 움직였는지' 를 적어 준다. dist 를 읽으므로 검사 전에 반드시 빌드가 최신이어야 한다.",
+    "visual:baseline": "node scripts/visual-check.mjs --baseline",
+    "visual:check": "node scripts/visual-check.mjs",
+    "//visual:serve": "찍힌 화면이 이상할 때 사람이 직접 열어 보려고 dist 를 그대로 내보낸다(빈 포트를 받아 쓰므로 5173·4180 과 부딪히지 않는다).",
+    "visual:serve": "node scripts/visual-serve.mjs",
     "//check:hydration": "dist 가 이미 있을 때 하이드레이션 검사만 다시 돌린다(디버깅용). 라우트 하나씩 보려면 node scripts/hydrate-one.mjs <route> <width>.",
     "check:hydration": "node scripts/hydration-check.mjs",
     "//fonts": "Pretendard 가변 dynamic subset(woff2 92개)을 public/fonts/pretendard/ 로 내려받고 src/index.css 의 @font-face 블록을 다시 만든다. **빌드에는 일부러 안 걸었다** — woff2 는 저장소에 커밋해 두었으므로 npm ci && npm run build 는 폰트 CDN 없이 돈다. 이 명령은 버전을 올릴 때(scripts/fetch-fonts.mjs 의 VERSION 한 줄)만 쓴다. 몇 번을 돌려도 결과가 같다(있는 파일은 건너뛴다). 전부 다시 받으려면 -- --force.",
     "fonts": "node scripts/fetch-fonts.mjs",
+    "//test": "src/lib 의 순수 로직(seo·seoData·notices)만 검사한다. DOM/컴포넌트 테스트는 없다 — 여기서 지키려는 것은 화면이 아니라 **눈에 안 보이는 계약**이다. 특히 NAP 생략 규칙(자리표시자 전화·주소가 JSON-LD 로 나가지 않는 것)은 회귀해도 화면에 아무 표시가 안 나서 사람이 못 잡는다. CI 없이도 손으로 돌릴 수 있게 watch 를 끈 run 을 기본으로 둔다.",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "//lint": "훅 규칙·의존성 누락·안 쓰는 변수를 본다(eslint.config.js). **빌드에 일부러 안 걸었다** — 배포는 코드 스타일이 아니라 '화면이 나오는가' 로 막아야 하고, 그 자리는 이미 hydration-check 가 지킨다. 경고(react-refresh 의 HMR 경계 안내)는 통과시키고 오류만 세운다. 경고까지 막으려면 -- --max-warnings 0.",
+    "lint": "eslint .",
+    "//typecheck": "TypeScript 로 옮기지 않고 JSDoc 만으로 타입을 본다. 검사 범위는 jsconfig.json 의 include 가 정한다 — src/lib/** 와 scripts/** 뿐이다. JSX 컴포넌트는 일부러 뺐다(이유는 jsconfig.json 주석). 이것도 빌드에 걸지 않는다.",
+    "typecheck": "tsc -p jsconfig.json",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -28,11 +40,20 @@
     "react-router-dom": "^7.18.1"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@tailwindcss/vite": "^4.1.14",
+    "@types/node": "^26.1.1",
     "@vitejs/plugin-react": "^5.0.4",
+    "eslint": "^10.7.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-refresh": "^0.5.3",
+    "globals": "^17.7.0",
     "jsdom": "^29.1.1",
+    "playwright": "^1.61.1",
     "sharp": "^0.35.3",
     "tailwindcss": "^4.1.14",
-    "vite": "^7.1.9"
+    "typescript": "^7.0.2",
+    "vite": "^7.1.9",
+    "vitest": "^4.1.10"
   }
 }

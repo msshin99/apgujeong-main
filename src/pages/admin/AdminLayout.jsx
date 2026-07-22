@@ -16,11 +16,10 @@ const NAV = [
   { to: "/admin/notices", label: "공지사항", icon: <IconDoc />, desc: "글 등록·수정" },
   { to: "/admin/inquiries", label: "문의 관리", icon: <IconMail />, desc: "접수된 문의" },
   { to: "/admin/seo", label: "검색 최적화", icon: <IconSearch />, desc: "제목·설명·매장 정보" },
-  { to: "/admin/clusters", label: "토픽 클러스터", icon: <IconCluster />, desc: "페이지 묶기" },
 ];
 
 /* 아이콘은 ui.jsx 의 선 두께·모서리 처리를 그대로 따른다.
-   메뉴에만 쓰이는 두 개라 공통 부품으로 빼지 않고 여기 둔다 */
+   메뉴에만 쓰이는 하나라 공통 부품으로 빼지 않고 여기 둔다 */
 const stroke = {
   fill: "none",
   stroke: "currentColor",
@@ -38,16 +37,22 @@ function IconSearch() {
   );
 }
 
-function IconCluster() {
-  return (
-    <svg viewBox="0 0 20 20" className="size-[18px]" aria-hidden>
-      <circle cx="10" cy="4.5" r="2.2" {...stroke} />
-      <circle cx="4.5" cy="15" r="2.2" {...stroke} />
-      <circle cx="15.5" cy="15" r="2.2" {...stroke} />
-      <path d="M8.6 6.4L5.8 12.9M11.4 6.4l2.8 6.5M6.7 15h6.6" {...stroke} />
-    </svg>
-  );
-}
+/**
+ * 개발 서버에서는 로그인을 건너뛰고 관리자 화면을 바로 연다.
+ *
+ * import.meta.env.DEV 는 Vite 가 빌드 때 false 로 치환하므로, 배포 번들에는
+ * 이 분기와 아래 안내 배너가 **코드째 사라진다.** 실수로 켜진 채 나갈 수 없다.
+ *
+ * 다만 화면만 열릴 뿐 권한이 생기는 것은 아니다. 실제 데이터는 Supabase 가
+ * 토큰을 보고 내주는데 토큰이 없으므로, 문의·공지 목록은 비어 보인다.
+ * 진짜 데이터까지 보려면 로그인해야 한다 — 주소에 ?login 을 붙이면 로그인
+ * 화면이 나온다.
+ */
+const DEV_OPEN = import.meta.env.DEV;
+const DEV_SESSION = { user: { email: "dev@localhost" } };
+
+const wantsLoginForm = () =>
+  typeof window !== "undefined" && new URLSearchParams(window.location.search).has("login");
 
 export default function AdminLayout() {
   const { session, loading } = useSession();
@@ -73,10 +78,24 @@ export default function AdminLayout() {
     );
   }
 
-  if (!session) return <LoginForm />;
+  /* 개발 서버에서는 세션이 없어도 화면을 연다 (?login 이 붙으면 로그인 화면 유지) */
+  const devOpen = DEV_OPEN && !session && !wantsLoginForm();
+  const current = session ?? (devOpen ? DEV_SESSION : null);
+  if (!current) return <LoginForm />;
 
   return (
     <div className="min-h-[100dvh] bg-[#f7f7f9] font-pretendard text-[#1a1a1e]">
+      {devOpen && (
+        <div className="sticky top-0 z-50 flex flex-wrap items-center justify-center gap-x-[10px] gap-y-[2px] bg-[#e61911] px-[16px] py-[7px] text-center text-[12px] leading-[18px] font-medium text-white">
+          <span>개발 모드 — 로그인 없이 열었습니다. 배포본에는 이 동작이 들어가지 않습니다.</span>
+          <span className="text-white/75">
+            권한이 없어 목록은 비어 보입니다.{" "}
+            <a href="?login" className="underline underline-offset-2">
+              로그인하기
+            </a>
+          </span>
+        </div>
+      )}
       {/* ── 넓은 화면: 왼쪽 고정 메뉴 ── */}
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-[252px] flex-col border-r border-[#eaeaee] bg-white lg:flex">
         <div className="flex items-center gap-[10px] px-[22px] py-[24px]">
@@ -106,12 +125,12 @@ export default function AdminLayout() {
         <div className="m-[14px] flex flex-col gap-[11px] rounded-[12px] bg-[#f6f6f9] p-[14px]">
           <div className="flex items-center gap-[9px]">
             <span className="flex size-[30px] shrink-0 items-center justify-center rounded-full bg-white text-[12px] font-bold text-[#6a6a73]">
-              {session.user.email?.[0]?.toUpperCase() ?? "A"}
+              {current.user.email?.[0]?.toUpperCase() ?? "A"}
             </span>
             <span className="flex min-w-0 flex-col">
               <span className="text-[11px] leading-[15px] text-[#9a9aa2]">로그인 계정</span>
               <span className="truncate text-[12px] leading-[17px] font-medium">
-                {session.user.email}
+                {current.user.email}
               </span>
             </span>
           </div>
@@ -143,8 +162,9 @@ export default function AdminLayout() {
             로그아웃
           </Btn>
         </div>
-        {/* 메뉴가 넷이라 한 줄에 다 넣으면 좁은 화면에서 글자가 뭉갠다. 두 칸씩 접는다 */}
-        <nav className="grid grid-cols-2 gap-[6px]">
+        {/* 메뉴가 셋이라 한 줄에 고르게 들어간다. 두 칸씩 접으면 마지막 칸만
+            덩그러니 남아 빈자리가 생기므로 칸 수를 메뉴 수에 맞춘다 */}
+        <nav className="grid grid-cols-3 gap-[6px]">
           {NAV.map((item) => (
             <TopLink key={item.to} {...item} />
           ))}

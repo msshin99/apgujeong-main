@@ -47,7 +47,6 @@ export default function AdminInquiries() {
     return () => {
       alive.current = false;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const unread = useMemo(() => rows.filter((r) => !r.is_read).length, [rows]);

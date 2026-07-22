@@ -57,7 +57,7 @@ function currentOrigin() {
  *   - 문서당 한 번만 읽는다(모듈 수준 캐시). 라우팅할 때마다 요청하지 않는다.
  *   - `source: "static"` 이면 겹치지 않는다. 그 값은 이미 seo.js 가 쓰고 있는 것과
  *     같은 원본이라 덮어써 봐야 달라지는 것이 없고, 실패해도 조용히 정적 값으로 남는다.
- * @type {Promise<{settings: object|null, pages: Map<string, object>|null}>|null}
+ * @type {Promise<{settings: Record<string, any>|null, pages: Map<string, Record<string, any>>|null}>|null}
  */
 let overlayPromise = null;
 let overlay = { settings: null, pages: null };
@@ -208,10 +208,10 @@ function syncJsonLd(graph, undos) {
  *
  * @param {string} routePath - 라우터의 pathname("/menu", "/notice/12"). base 는 이미 빠진 값
  * @param {object} [ctx]     - resolveMeta / buildJsonLd 에 그대로 넘기는 맥락
- * @param {object} [ctx.notice]     - 공지 상세의 글(제목·요약·발행일이 메타를 이긴다)
- * @param {object[]} [ctx.notices]  - /notice 목록의 공개 글들(ItemList 용)
- * @param {object} [ctx.dbPage]     - seo_pages 한 행(런타임에서 DB 를 읽는다면)
- * @param {object} [ctx.dbSettings] - seo_settings 한 행
+ * @param {Record<string, any>} [ctx.notice]     - 공지 상세의 글(제목·요약·발행일이 메타를 이긴다)
+ * @param {Record<string, any>[]} [ctx.notices]  - /notice 목록의 공개 글들(ItemList 용)
+ * @param {Record<string, any>} [ctx.dbPage]     - seo_pages 한 행(런타임에서 DB 를 읽는다면)
+ * @param {Record<string, any>} [ctx.dbSettings] - seo_settings 한 행
  * @returns {void}
  */
 export default function useSeo(routePath, ctx = {}) {

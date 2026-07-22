@@ -276,7 +276,6 @@ export default function AdminNotices() {
       {/* ── 상단 ── */}
       <PageHead
         title="공지사항"
-        description="여기서 등록한 글이 사이트의 공지사항 페이지에 그대로 올라갑니다."
       >
         <Btn tone="primary" onClick={openNew}>
           <IconPlus />새 공지 작성
@@ -459,7 +458,7 @@ export default function AdminNotices() {
 
           {/* 넓은 창에서는 글 내용과 부가 설정을 좌우로 나눈다 */}
           <div className="grid gap-[24px] md:grid-cols-[minmax(0,1fr)_320px]">
-            <Field label="본문" required hint="빈 줄(엔터 두 번)로 문단이 나뉩니다">
+            <Field label="본문" required>
               <textarea
                 value={draft.body}
                 onChange={set("body")}
@@ -484,7 +483,7 @@ export default function AdminNotices() {
                 <input type="text" value={draft.author} onChange={set("author")} className={INPUT} />
               </Field>
 
-              <Field label="대표 이미지" hint="목록·상세에 함께 쓰입니다" htmlFor="notice-image">
+              <Field label="대표 이미지" htmlFor="notice-image">
             {/* 진짜 file 입력칸은 숨겨 두고 이 칸이 대신 눌린다.
                 그래서 이 칸 자체가 버튼이어야 키보드만으로도 사진을 고를 수 있다 */}
             <button

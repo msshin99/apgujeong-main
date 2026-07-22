@@ -78,6 +78,10 @@ function authHeaders() {
  *
  * code 를 반드시 살려야 한다. 42703(없는 칸)·42P01(없는 표)·PGRST205 같은 값이
  * 없으면 "마이그레이션을 안 돌렸을 뿐인 멀쩡한 사이트" 가 오류 화면으로 죽는다.
+ *
+ * @typedef {Error & { code: string, details: any, hint: any, status: number }} PostgrestLikeError
+ * @param {Response} res
+ * @returns {Promise<PostgrestLikeError>}
  */
 async function toPostgrestError(res) {
   let body = null;
@@ -87,7 +91,11 @@ async function toPostgrestError(res) {
     /* 502 HTML 처럼 JSON 이 아닌 응답도 온다. 그때는 상태 코드로 채운다 */
     body = null;
   }
-  const error = new Error(body?.message || res.statusText || `HTTP ${res.status}`);
+  /* Error 에 칸을 덧붙이는 자리다. 타입 검사기에 "이 네 칸은 계약"이라고 알려 둔다 —
+     admin/ui.jsx 의 explainError 가 code 로 분기하므로 조용히 사라지면 안 되는 값들이다 */
+  const error = /** @type {PostgrestLikeError} */ (
+    new Error(body?.message || res.statusText || `HTTP ${res.status}`)
+  );
   error.name = "PostgrestError";
   error.code = body?.code ?? String(res.status);
   error.details = body?.details ?? null;

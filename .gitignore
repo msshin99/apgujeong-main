@@ -9,6 +9,13 @@ dist
 .image-cache
 src/generated
 
+# 시각 회귀 검사 산출물 (scripts/visual-check.mjs)
+# baseline/current/diff 에 라우트 × 화면폭 만큼의 전체 페이지 PNG 가 쌓인다. 63장에
+# 수백 MB 다. 기준은 "지금 이 기계에서 방금 찍은 것" 이어야 의미가 있으므로 — 폰트 렌더링과
+# 크로미움 판이 기계마다 다르다 — 커밋해서 돌려쓰는 물건이 아니다. 작업 시작 전에 각자
+# npm run visual:baseline 로 새로 찍는다.
+.visual
+
 # 지도 키 등 환경변수는 커밋하지 않는다 (.env.example 만 공유)
 .env
 .env.local

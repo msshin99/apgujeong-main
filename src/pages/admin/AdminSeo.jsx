@@ -1,8 +1,7 @@
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { isReal, resolveMeta } from "../../lib/seo.js";
-import { ROUTE_LABELS } from "../../lib/seoData.js";
+import { findCluster, ROUTE_LABELS } from "../../lib/seoData.js";
 import {
-  loadClusters,
   loadSeoPages,
   loadSeoSettings,
   saveSeoPage,
@@ -17,7 +16,6 @@ import {
   Drawer,
   ErrorDialog,
   Field,
-  Guide,
   INPUT,
   IconImage,
   IconPlus,
@@ -32,7 +30,11 @@ import {
  *
  * 두 부분이다.
  *   1) 사이트 기본 설정 — 사이트명·제목 템플릿·기본 설명·조직 정보처럼 전 페이지에 깔리는 값
- *   2) 페이지별 SEO — 라우트마다의 제목·설명·키워드·FAQ·클러스터 소속
+ *   2) 페이지별 SEO — 라우트마다의 제목·설명·키워드·FAQ
+ *
+ * 토픽 클러스터는 여기서 손대지 않는다. 어느 페이지가 어느 묶음에 속하는지는 한 번
+ * 정하면 바뀌지 않는 정보 구조라, 운영자가 고칠 값이 아니라 코드(seoData.js 의
+ * CLUSTERS)에 박아 둔다. 목록의 클러스터 이름은 그래서 **읽기 전용 안내**다.
  *
  * 여기서 고친 값은 **다시 빌드해야** 사이트에 반영된다. 메타 정보는 방문자의
  * 브라우저가 아니라 크롤러가 읽는 것이라, 빌드 시점에 HTML 에 박혀야 의미가 있다.
@@ -71,7 +73,6 @@ export default function AdminSeo() {
   const [tab, setTab] = useState("site");
   const [settings, setSettings] = useState(null);
   const [pages, setPages] = useState([]);
-  const [clusters, setClusters] = useState([]);
   /* "db" 가 아니면 마이그레이션 전이라 저장할 곳이 없다 */
   const [source, setSource] = useState("db");
   const [loading, setLoading] = useState(true);
@@ -82,13 +83,12 @@ export default function AdminSeo() {
   const alive = useRef(true);
 
   const refresh = () =>
-    Promise.all([loadSeoSettings(), loadSeoPages(), loadClusters()])
-      .then(([s, p, c]) => {
+    Promise.all([loadSeoSettings(), loadSeoPages()])
+      .then(([s, p]) => {
         if (!alive.current) return;
         setSettings(s.row);
         setPages(p.rows);
-        setClusters(c.rows);
-        /* 셋 중 하나라도 정적이면 전체를 읽기 전용으로 본다.
+        /* 둘 중 하나라도 정적이면 전체를 읽기 전용으로 본다.
            일부만 저장되는 상태가 가장 헷갈리기 때문이다 */
         setSource(s.source === "db" && p.source === "db" ? "db" : "static");
       })
@@ -122,7 +122,6 @@ export default function AdminSeo() {
     <div className="mx-auto flex w-full max-w-[1080px] flex-col gap-[20px]">
       <PageHead
         title="검색 최적화"
-        description="검색엔진과 카카오톡·페이스북 미리보기에 쓰이는 문구를 여기서 정합니다."
       />
 
       {readOnly && <ReadOnlyNotice />}
@@ -150,7 +149,6 @@ export default function AdminSeo() {
         <PageMetaList
           rows={pages}
           settings={settings}
-          clusters={clusters}
           readOnly={readOnly}
           onSaved={(saved) => {
             setPages((list) => list.map((r) => (r.route === saved.route ? saved : r)));
@@ -236,10 +234,9 @@ function SiteSettings({ row, readOnly, onSaved, onFail }) {
     <form onSubmit={onSubmit} className="flex flex-col gap-[16px]">
       <Section
         title="기본 정보"
-        desc="모든 페이지에 공통으로 깔리는 값입니다. 페이지별로 따로 정한 값이 있으면 그쪽이 이깁니다."
       >
         <div className="grid gap-[16px] md:grid-cols-2">
-          <Field label="사이트 이름" hint="검색결과·공유 카드에 붙습니다">
+          <Field label="사이트 이름">
             <input
               type="text"
               value={draft.site_name}
@@ -249,10 +246,7 @@ function SiteSettings({ row, readOnly, onSaved, onFail }) {
             />
           </Field>
 
-          <Field
-            label="사이트 주소"
-            hint="끝에 / 없이. 비우면 canonical 이 나가지 않습니다"
-          >
+          <Field label="사이트 주소">
             <input
               type="url"
               value={draft.site_url}
@@ -262,7 +256,7 @@ function SiteSettings({ row, readOnly, onSaved, onFail }) {
             />
           </Field>
 
-          <Field label="제목 템플릿" hint="%s 자리에 페이지 제목이 들어갑니다">
+          <Field label="제목 템플릿">
             <input
               type="text"
               value={draft.title_template}
@@ -272,7 +266,7 @@ function SiteSettings({ row, readOnly, onSaved, onFail }) {
             />
           </Field>
 
-          <Field label="홈 제목" hint="홈만 템플릿을 거치지 않습니다">
+          <Field label="홈 제목">
             <input
               type="text"
               value={draft.default_title}
@@ -284,7 +278,6 @@ function SiteSettings({ row, readOnly, onSaved, onFail }) {
 
         <Field
           label="기본 설명"
-          hint="페이지에 설명이 없을 때 대신 쓰입니다"
           className="mt-[16px]"
         >
           <textarea
@@ -299,14 +292,13 @@ function SiteSettings({ row, readOnly, onSaved, onFail }) {
         <div className="mt-[16px] grid gap-[16px] md:grid-cols-2">
           <ImageField
             label="기본 공유 이미지"
-            hint="카카오톡·페이스북 미리보기 (권장 1200 × 630)"
             value={draft.default_og_path}
             onChange={(v) => setDraft((d) => ({ ...d, default_og_path: v }))}
             onFail={onFail}
           />
 
           <div className="flex flex-col gap-[16px]">
-            <Field label="언어" hint="형식은 ko_KR 처럼 두 글자_두 글자">
+            <Field label="언어">
               <input
                 type="text"
                 value={draft.locale}
@@ -336,7 +328,6 @@ function SiteSettings({ row, readOnly, onSaved, onFail }) {
       {/* ── 조직 · 사업자 정보 (NAP) ── */}
       <Section
         title="매장 정보 (상호 · 주소 · 전화)"
-        desc="지금은 일부러 비어 있습니다. 아래 설명을 먼저 읽어 주세요."
       >
         <div
           className={`flex flex-col gap-[7px] rounded-[12px] border px-[16px] py-[13px] ${
@@ -357,24 +348,20 @@ function SiteSettings({ row, readOnly, onSaved, onFail }) {
             }`}
           >
             {restaurantOn
-              ? "주소 다섯 칸과 전화번호가 모두 채워졌습니다. 다시 배포하면 검색엔진에 매장 정보(주소·전화·영업시간)가 함께 나갑니다."
-              : "주소 다섯 칸(도로명·시군구·시도·우편번호·국가)과 전화번호가 모두 채워져야 켜집니다. 지금은 꺼져 있고, 이것은 실수가 아니라 의도한 상태입니다 — 사이트에 적힌 전화·주소가 아직 견본이라, 그대로 내보내면 검색엔진에 거짓 정보를 등록하는 셈이 되기 때문입니다."}
-          </p>
-          <p className="text-[12px] leading-[19px] text-[#7286ad]">
-            한 칸이라도 비거나 0000 · 010-1234-5678 같은 견본 값이면 매장 정보 전체가
-            나가지 않습니다. 일부만 내보내는 것은 도움이 되지 않고 틀린 정보만 남기기 때문입니다.
+              ? "주소 다섯 칸과 전화번호가 모두 채워졌습니다."
+              : "주소 다섯 칸(도로명·시군구·시도·우편번호·국가)과 전화번호가 모두 채워져야 켜집니다."}
           </p>
         </div>
 
         <div className="mt-[16px] grid gap-[16px] md:grid-cols-2">
-          <Field label="상호 (사업자등록증)" hint="비워 두면 사이트 이름을 씁니다">
+          <Field label="상호 (사업자등록증)">
             <input type="text" value={draft.org_legal_name} onChange={set("org_legal_name")} className={INPUT} />
           </Field>
           <Field label="영문 · 약칭">
             <input type="text" value={draft.org_alternate_name} onChange={set("org_alternate_name")} className={INPUT} />
           </Field>
 
-          <Field label="대표 전화" hint="+82-2-000-0000 형식을 권합니다">
+          <Field label="대표 전화">
             <input
               type="tel"
               value={draft.org_phone}
@@ -397,26 +384,26 @@ function SiteSettings({ row, readOnly, onSaved, onFail }) {
             />
           </Field>
 
-          <Field label="시 / 군 / 구" hint="예: 강남구">
+          <Field label="시 / 군 / 구">
             <input type="text" value={draft.org_locality} onChange={set("org_locality")} className={INPUT} />
           </Field>
-          <Field label="시 / 도" hint="예: 서울특별시">
+          <Field label="시 / 도">
             <input type="text" value={draft.org_region} onChange={set("org_region")} className={INPUT} />
           </Field>
           <Field label="우편번호">
             <input type="text" value={draft.org_postal_code} onChange={set("org_postal_code")} className={INPUT} />
           </Field>
-          <Field label="국가 코드" hint="두 글자. 대한민국은 KR">
+          <Field label="국가 코드">
             <input type="text" value={draft.org_country} onChange={set("org_country")} placeholder="KR" className={INPUT} />
           </Field>
 
           <Field label="사업자등록번호">
             <input type="text" value={draft.org_biz_number} onChange={set("org_biz_number")} className={INPUT} />
           </Field>
-          <Field label="가격대" hint="예: ₩₩">
+          <Field label="가격대">
             <input type="text" value={draft.org_price_range} onChange={set("org_price_range")} className={INPUT} />
           </Field>
-          <Field label="설립일" hint="YYYY-MM-DD. 모르면 비워 두세요">
+          <Field label="설립일">
             <input
               type="text"
               value={draft.org_founding_date ?? ""}
@@ -435,7 +422,6 @@ function SiteSettings({ row, readOnly, onSaved, onFail }) {
 
       <Section
         title="외부 프로필 링크"
-        desc="네이버 플레이스·인스타그램 주소를 적으면 이 사이트와 실제 매장이 같은 곳이라는 신호가 됩니다. 매장 정보가 비어 있는 동안에는 이것이 사실상 유일하게 효과가 있는 항목입니다."
       >
         <UrlListField
           value={draft.same_as}
@@ -586,7 +572,7 @@ function UrlListField({ value, onChange }) {
  * 2. 페이지별 SEO
  * ============================================================ */
 
-function PageMetaList({ rows, settings, clusters, readOnly, onSaved, onFail }) {
+function PageMetaList({ rows, settings, readOnly, onSaved, onFail }) {
   const [editing, setEditing] = useState(null);
 
   /* 목록과 편집 창이 같은 계산을 봐야 한다. 여기서 한 번 계산해 둔다 */
@@ -646,29 +632,14 @@ function PageMetaList({ rows, settings, clusters, readOnly, onSaved, onFail }) {
           accent={withIssues > 0}
           muted={withIssues === 0}
         />
-        <Stat
-          label="클러스터"
-          value={clusters.length}
-          suffix="개"
-          muted={clusters.length === 0}
-        />
       </div>
-
-      <Guide
-        id="seo-pages"
-        title="페이지별 SEO 는 이렇게 씁니다"
-        steps={[
-          "고칠 페이지의 ‘편집’ 을 누르면 오른쪽에 검색결과 미리보기가 함께 나옵니다.",
-          `제목은 ${TITLE_LIMIT}자, 설명은 ${DESC_LIMIT}자 안쪽이 안전합니다. 넘으면 검색결과에서 말줄임으로 잘립니다.`,
-          "FAQ 를 채우면 검색결과에 문답이 함께 나올 수 있습니다. 다만 페이지 화면에도 같은 문답이 보여야 합니다 — 마크업에만 있는 FAQ 는 정책 위반입니다.",
-          "저장한 뒤 사이트를 다시 배포해야 검색엔진에 반영됩니다.",
-        ]}
-      />
 
       <ul className="flex flex-col gap-[10px]">
         {metas.map(({ row, meta }) => {
           const issues = issuesOf(row, meta);
-          const cluster = clusters.find((c) => c.id === row.cluster_id);
+          /* 소속은 코드(seoData.js)가 정한다. 여기서는 "이 페이지가 어느 묶음의
+             내부링크를 받는지" 를 알려 주기만 한다 — 고칠 수 있는 값이 아니다 */
+          const cluster = findCluster(row.route);
           return (
             <li
               key={row.route}
@@ -712,7 +683,6 @@ function PageMetaList({ rows, settings, clusters, readOnly, onSaved, onFail }) {
           key={editing.route}
           row={editing}
           settings={settings}
-          clusters={clusters}
           readOnly={readOnly}
           onClose={() => setEditing(null)}
           onSaved={(saved) => {
@@ -733,7 +703,7 @@ function PageMetaList({ rows, settings, clusters, readOnly, onSaved, onFail }) {
  * resolveMeta 에 넘겨 미리보기를 그리기 위해서다. 화면에 보이는 미리보기와
  * 실제로 나갈 값이 같은 함수를 거치므로 어긋날 수가 없다.
  */
-function PageDrawer({ row, settings, clusters, readOnly, onClose, onSaved, onFail }) {
+function PageDrawer({ row, settings, readOnly, onClose, onSaved, onFail }) {
   const [draft, setDraft] = useState(row);
   const [busy, setBusy] = useState(false);
   const set = (key) => (e) => setDraft((d) => ({ ...d, [key]: e.target.value }));
@@ -792,14 +762,14 @@ function PageDrawer({ row, settings, clusters, readOnly, onClose, onSaved, onFai
           {/* ── 왼쪽: 입력 ── */}
           <div className="flex flex-col gap-[18px]">
             <div className="flex flex-col gap-[7px]">
-              <Field label="제목" hint="검색결과의 파란 글씨">
+              <Field label="제목">
                 <input type="text" value={draft.title} onChange={set("title")} className={INPUT} />
               </Field>
               <Counter value={draft.title} limit={TITLE_LIMIT} />
             </div>
 
             <div className="flex flex-col gap-[7px]">
-              <Field label="설명" hint="검색결과의 회색 두 줄">
+              <Field label="설명">
                 <textarea
                   value={draft.description}
                   onChange={set("description")}
@@ -816,7 +786,7 @@ function PageDrawer({ row, settings, clusters, readOnly, onClose, onSaved, onFai
               )}
             </div>
 
-            <Field label="대표 검색어" hint="이 페이지가 1등을 노리는 단 하나의 검색어">
+            <Field label="대표 검색어">
               <input
                 type="text"
                 value={draft.primary_keyword}
@@ -826,7 +796,7 @@ function PageDrawer({ row, settings, clusters, readOnly, onClose, onSaved, onFai
               />
             </Field>
 
-            <Field label="키워드" hint="쉼표로 구분. 최대 20개">
+            <Field label="키워드">
               <TagsField
                 value={draft.keywords}
                 onChange={(v) => setDraft((d) => ({ ...d, keywords: v }))}
@@ -845,13 +815,12 @@ function PageDrawer({ row, settings, clusters, readOnly, onClose, onSaved, onFai
 
             <ImageField
               label="공유 이미지"
-              hint="비우면 사이트 기본 이미지를 씁니다"
               value={draft.og_path}
               onChange={(v) => setDraft((d) => ({ ...d, og_path: v }))}
               onFail={onFail}
             />
 
-            <Field label="대표 주소(canonical)" hint="비우면 사이트 주소 + 경로로 자동 조립">
+            <Field label="대표 주소(canonical)">
               <input
                 type="url"
                 value={draft.canonical_url ?? ""}
@@ -865,42 +834,18 @@ function PageDrawer({ row, settings, clusters, readOnly, onClose, onSaved, onFai
               <span className="text-[13px] font-semibold text-[#1a1a1e]">검색 노출</span>
               <Toggle
                 label="검색결과에 노출"
-                desc="끄면 이 페이지는 검색에서 사라집니다"
                 checked={draft.robots_index !== false}
                 onChange={(v) => setDraft((d) => ({ ...d, robots_index: v }))}
               />
               <Toggle
                 label="페이지 안의 링크 따라가기"
-                desc="특별한 이유가 없으면 켜 둡니다"
                 checked={draft.robots_follow !== false}
                 onChange={(v) => setDraft((d) => ({ ...d, robots_follow: v }))}
               />
             </div>
 
-            <Field label="소속 클러스터" hint="내부 링크가 모이는 묶음" htmlFor="seo-cluster">
-              <select
-                id="seo-cluster"
-                value={draft.cluster_id ?? ""}
-                onChange={(e) =>
-                  setDraft((d) => ({
-                    ...d,
-                    cluster_id: e.target.value === "" ? null : Number(e.target.value),
-                  }))
-                }
-                className={INPUT}
-              >
-                <option value="">없음 (홈은 어디에도 넣지 않습니다)</option>
-                {clusters.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-            </Field>
-
             <Field
               label="스키마 유형"
-              hint="비우면 경로에 맞춰 자동 판정합니다"
               htmlFor="seo-schema"
             >
               <select
@@ -920,7 +865,7 @@ function PageDrawer({ row, settings, clusters, readOnly, onClose, onSaved, onFai
               </select>
             </Field>
 
-            <Field label="운영 메모" hint="사이트에는 나가지 않습니다">
+            <Field label="운영 메모">
               <textarea
                 value={draft.admin_note}
                 onChange={set("admin_note")}

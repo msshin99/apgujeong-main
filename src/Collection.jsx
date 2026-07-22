@@ -80,8 +80,6 @@ const ITEMS = [...CARDS, ...CARDS];
 const N = ITEMS.length; // 14
 const HALF = N / 2; // 7 — 순환 이음매는 중심에서 2408px, 화면 밖이다
 
-const clamp = (v, min, max) => Math.min(Math.max(v, min), max);
-
 /** 연속 거리값을 -N/2 ~ N/2 로 접는다 */
 const wrapOffset = (v) => {
   const d = ((v % N) + N) % N;
@@ -177,7 +175,6 @@ export default function Collection() {
      페인트 전에 끝내야 14 장이 화면 가운데 겹쳐 보이는 한 프레임이 생기지 않는다. */
   useLayoutEffect(() => {
     draw(pos.current);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isCompact, isMobile]);
 
   useEffect(() => {

@@ -111,14 +111,22 @@ let ssrSeed = null;
 /**
  * 빌드 시점에 공지를 심는다. scripts/prerender.mjs 전용.
  *
- * @param {object[]} rows
+ * @param {Record<string, any>[]} rows
  * @param {{ shaped?: boolean }} [options] - shaped 면 이미 화면 모양(noticeData.js)이라
  *   toView 를 거치지 않는다. DB 행이면 false 로 두어 여기서 모양을 맞춘다.
  */
 export function seedPrerenderNotices(rows, { shaped = false } = {}) {
   const list = Array.isArray(rows) ? rows : [];
   ssrSeed = list.map((row) =>
-    shaped ? { ...row, id: String(row.id), isPublic: row.is_public ?? true } : toView(row),
+    shaped
+      ? /* shaped 는 "이미 toView 를 거친 모양"이라는 호출자의 약속이다.
+           위 주석의 '발을 맞춰야 한다' 가 바로 이 단언이고, 어긋나면 하이드레이션에서 터진다 */
+        /** @type {ReturnType<typeof toView>} */ ({
+          ...row,
+          id: String(row.id),
+          isPublic: row.is_public ?? true,
+        })
+      : toView(row),
   );
 }
 
@@ -129,7 +137,9 @@ export function seededNotices() {
      이게 없으면 하이드레이션 첫 렌더가 빈 목록이 되어 서버가 그린 카드와 어긋난다.
      프리렌더하지 않은 화면(dist/404.html · 개발 서버)에는 없으므로 종전대로 null 이다 */
   if (typeof window === "undefined") return null;
-  const seed = window.__PRERENDER__?.notices;
+  /* __PRERENDER__ 는 scripts/prerender.mjs 가 HTML 에 직접 써 넣는 전역이라
+     어떤 타입 선언에도 없다. 여기서만 쓰는 값이므로 이 자리에서 풀어 준다 */
+  const seed = /** @type {any} */ (window).__PRERENDER__?.notices;
   return Array.isArray(seed) ? seed : null;
 }
 

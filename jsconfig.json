@@ -1,0 +1,40 @@
+{
+  // TypeScript 로 옮기지 않고 JSDoc 만으로 타입을 본다.
+  // checkJs 는 순수 로직 층에만 켠다 — src/lib/** 와 scripts/** 는 이미 JSDoc 이 촘촘하고,
+  // DOM 측정·캔버스 스케일 없이 값만 다루는 곳이라 검사가 실제로 맞는 것을 잡는다.
+  // JSX 컴포넌트까지 켜면 props 타입이 없어 수백 건이 쏟아지는데,
+  // 그것은 화면 코드를 하나로 합치는 다음 단계와 정면으로 부딪힌다.
+  "compilerOptions": {
+    // 브라우저와 노드 양쪽에서 도는 코드다. ES2022 면 두 곳 모두 그대로 이해한다.
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    // vite 가 실제로 쓰는 해석 방식과 같아야 확장자 없는 import 와
+    // package.json exports 를 똑같이 읽는다.
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "allowJs": true,
+    "checkJs": true,
+    "noEmit": true,
+    // 타입 선언이 없는 의존성(jsdom·sharp 등)의 **구현 .js 를 따라 들어가지 않는다.**
+    // 0 이 아니면 남의 라이브러리 내부 오류 수백 건이 우리 오류인 척 섞여 나온다.
+    "maxNodeModuleJsDepth": 0,
+    "skipLibCheck": true,
+    // strict 는 켜지 않는다. 이 층은 Supabase 응답처럼 모양이 느슨한 값을 다뤄서,
+    // strictNullChecks 를 켜면 "있을 수도 없을 수도 있는 행" 마다 손을 봐야 한다.
+    // 지금 필요한 것은 오타·없는 함수·인자 개수 같은 명백한 것을 잡는 그물이다.
+    "strict": false,
+    // JSDoc 이 없는 인자까지 타입을 요구하면 이 단계가 '타입 붙이기' 작업이 된다.
+    "noImplicitAny": false,
+    // 이 설정이 .jsx 를 직접 검사하지는 않지만(include 참고),
+    // lib 에서 .jsx 를 import 하는 자리가 생기면 파싱은 되어야 한다.
+    "jsx": "react-jsx",
+    "types": ["node", "vite/client"]
+  },
+  // 여기 적힌 것만 검사한다.
+  // ⚠ src/**/*.jsx 를 넣지 말 것 — 넣는 순간 이 설정의 의미가 사라진다.
+  "include": ["src/lib/**/*.js", "scripts/**/*.mjs"],
+  // __tests__ 는 빼 둔다 — describe/it/expect 는 러너가 넣어 주는 전역이라
+  // 여기서 검사하면 "없는 이름" 오류만 잔뜩 나온다. 테스트의 타입은 테스트 설정이 본다.
+  "exclude": ["node_modules", "dist", ".image-cache", "src/generated", "src/lib/__tests__"]
+}

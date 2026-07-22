@@ -36,7 +36,10 @@ import { StaticRouter } from "react-router-dom";
    SDK 는 세션·Storage 가 필요한 관리자 화면 전용이다. */
 import { isSupabaseReady, restSelect } from "../src/lib/rest.js";
 
-import { PRERENDER_ROUTES, SITE } from "../src/lib/seoData.js";
+/* 토픽 클러스터는 DB 가 아니라 여기(코드)에 고정돼 있다. 내부링크를 만드는
+   seo.js 의 internalLinksFor 도 같은 상수를 직접 읽으므로, 프리렌더는 그 개수를
+   로그에 찍기만 하면 된다 — 읽어 넘길 값이 따로 없다 */
+import { CLUSTERS, PRERENDER_ROUTES, SITE } from "../src/lib/seoData.js";
 import { buildJsonLd, resolveMeta, validateJsonLd } from "../src/lib/seo.js";
 
 /* ============================================================
@@ -156,11 +159,11 @@ function makeClient() {
 }
 
 /**
- * seo_settings / seo_pages / topic_clusters.
+ * seo_settings / seo_pages.
  * 표가 아직 없으면(마이그레이션 전) 조용히 정적 원본으로 되돌아간다.
  */
 async function loadSeoData(client) {
-  const out = { settings: null, pages: new Map(), clusters: [], source: "static" };
+  const out = { settings: null, pages: new Map(), source: "static" };
   if (!client) return out;
 
   try {
@@ -176,12 +179,6 @@ async function loadSeoData(client) {
     for (const row of await restSelect("seo_pages")) out.pages.set(row.route, row);
   } catch {
     /* 무시 — seoData.js 의 정적 라우트로 채워진다 */
-  }
-
-  try {
-    out.clusters = await restSelect("topic_clusters", { order: [["sort_order", "asc"]] });
-  } catch {
-    /* 무시 — 클러스터 없이도 페이지는 그려진다 */
   }
 
   out.source = "supabase";
@@ -502,7 +499,7 @@ async function main() {
     const seededList = noticesModule.seededNotices() ?? [];
 
     const origin = trimSlash(ENV_ORIGIN || seo.settings?.site_url || SITE.siteUrl);
-    log(`SEO 원본   ${seo.source} (seo_pages ${seo.pages.size}행 · 클러스터 ${seo.clusters.length}개)`);
+    log(`SEO 원본   ${seo.source} (seo_pages ${seo.pages.size}행 · 클러스터 ${CLUSTERS.length}개 — 코드 고정)`);
     log(`공지       ${noticeSource} · 공개 ${publicNotices.length}건`);
     log(`base       ${BASE}`);
     log(`origin     ${origin || "(없음)"}`);
@@ -554,8 +551,12 @@ async function main() {
       try {
         markup = renderer.render(withBase(job.route));
       } catch (err) {
-        /* 여기서 삼키면 빈 껍데기가 정상인 척 배포된다. 무조건 빌드를 세운다 */
-        throw new Error(`[${job.route}] 렌더 실패: ${err?.stack || err?.message || err}`);
+        /* 여기서 삼키면 빈 껍데기가 정상인 척 배포된다. 무조건 빌드를 세운다.
+           cause 로 원본을 매달아 둔다 — 메시지에 stack 을 문자열로 박아 두긴 하지만,
+           그것만으로는 상위에서 원래 오류의 종류(err.code 등)를 다시 볼 수 없다. */
+        throw new Error(`[${job.route}] 렌더 실패: ${err?.stack || err?.message || err}`, {
+          cause: err,
+        });
       }
       if (markup.includes(ERROR_BOUNDARY_MARK)) {
         throw new Error(

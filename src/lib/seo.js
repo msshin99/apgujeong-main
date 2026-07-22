@@ -197,9 +197,9 @@ export function applyTitleTemplate(title, template, siteName) {
  *
  * @param {string} routePath - 라우트 경로("/menu", "/notice/12")
  * @param {object} [ctx]
- * @param {object} [ctx.dbPage]     - seo_pages 한 행
- * @param {object} [ctx.dbSettings] - seo_settings 한 행
- * @param {object} [ctx.notice]     - 공지 상세일 때 그 글(제목·요약·og 를 최우선으로 쓴다)
+ * @param {Record<string, any>} [ctx.dbPage]     - seo_pages 한 행
+ * @param {Record<string, any>} [ctx.dbSettings] - seo_settings 한 행
+ * @param {Record<string, any>} [ctx.notice]     - 공지 상세일 때 그 글(제목·요약·og 를 최우선으로 쓴다)
  * @param {string} [ctx.origin]     - canonical 기준 origin. 없으면 설정값
  * @param {string} [ctx.base]       - 배포 base 경로. 기본 "/"
  * @returns {{
@@ -212,7 +212,9 @@ export function applyTitleTemplate(title, template, siteName) {
 export function resolveMeta(routePath, ctx = {}) {
   const { dbPage = null, dbSettings = null, notice = null, base = "/" } = ctx;
   const route = normalizeRoute(routePath);
-  const staticMeta = ROUTES[route] ?? {};
+  /* ROUTES 는 라우트마다 들고 있는 칸이 다르다(faq 가 있는 곳, keywords 만 있는 곳 …).
+     타입 검사기에는 "문자열 키 사전"이라고 알려 준다 — 아니면 없는 칸을 읽는 자리마다 걸린다 */
+  const staticMeta = /** @type {Record<string, any>} */ (ROUTES[route] ?? {});
 
   /** 앞에서부터 isReal 인 첫 값 */
   const pick = (...vals) => vals.find((v) => isReal(v)) ?? "";
@@ -353,7 +355,7 @@ function defaultSchemaType(route) {
  * @param {object} [ctx]
  * @param {string} [ctx.origin] - 절대 URL 을 만들 origin. 없으면 item 은 상대경로
  * @param {string} [ctx.base]   - 배포 base
- * @param {object} [ctx.notice] - 공지 상세일 때 마지막 항목 이름·주소에 쓴다
+ * @param {Record<string, any>} [ctx.notice] - 공지 상세일 때 마지막 항목 이름·주소에 쓴다
  * @returns {{ name: string, path: string, url: string }[]} 2개 미만이면 빈 배열
  */
 export function buildBreadcrumb(routePath, ctx = {}) {
@@ -551,14 +553,14 @@ function toBcp47(locale) {
  *
  * @param {string} routePath
  * @param {object} [ctx]
- * @param {object}   [ctx.meta]       - resolveMeta 결과. 없으면 내부에서 계산한다
- * @param {object}   [ctx.dbSettings] - seo_settings 한 행(조직 정보 override)
- * @param {object}   [ctx.notice]     - 공지 상세의 글
- * @param {object[]} [ctx.notices]    - /notice 목록의 공개 글들
- * @param {object[]} [ctx.stores]     - 지점 목록. NAP 이 실제 값인 것만 노드가 된다
+ * @param {Record<string, any>}   [ctx.meta]       - resolveMeta 결과. 없으면 내부에서 계산한다
+ * @param {Record<string, any>}   [ctx.dbSettings] - seo_settings 한 행(조직 정보 override)
+ * @param {Record<string, any>}   [ctx.notice]     - 공지 상세의 글
+ * @param {Record<string, any>[]} [ctx.notices]    - /notice 목록의 공개 글들
+ * @param {Record<string, any>[]} [ctx.stores]     - 지점 목록. NAP 이 실제 값인 것만 노드가 된다
  * @param {string}   [ctx.origin]
  * @param {string}   [ctx.base]
- * @returns {{ "@context": string, "@graph": object[] }|null} 그래프가 비면 null
+ * @returns {{ "@context": string, "@graph": Record<string, any>[] }|null} 그래프가 비면 null
  */
 export function buildJsonLd(routePath, ctx = {}) {
   const {
@@ -822,7 +824,7 @@ const SITE_LEVEL_ID_SUFFIXES = ["#organization", "#website", "#logo"];
  *       **문자열 값만 검사한다.** JSON 전체를 문자열로 만들어 훑으면 30,000원 같은
  *       정상 가격의 `30000` 이 `0{4,}` 패턴에 걸려 멀쩡한 빌드를 깨뜨린다.
  *
- * @param {object|null} graph - buildJsonLd 결과
+ * @param {Record<string, any>|null} graph - buildJsonLd 결과
  * @returns {string[]} 문제 목록. 비어 있으면 통과
  */
 export function validateJsonLd(graph) {

@@ -54,10 +54,16 @@ export function getSupabase() {
  *
  * AdminLayout·useSession 이 `supabase.auth.…` 를 **동기적으로** 부르므로
  * 모양을 그대로 지킨다. 안에서만 getSupabase() 를 기다린다.
+ *
+ * 인자를 `...args` 로 흘리지 않고 SDK 실제 서명대로 받는다.
+ * 가변 인자로 두면 오타난 인자나 빠진 인자를 타입 검사기가 잡지 못하는데,
+ * 여기는 로그인 실패가 "그냥 안 되네" 로만 보이는 자리라 그 그물이 필요하다.
  */
 const auth = {
-  getSession: async (...args) => (await getSupabase()).auth.getSession(...args),
-  signInWithPassword: async (...args) => (await getSupabase()).auth.signInWithPassword(...args),
+  getSession: async () => (await getSupabase()).auth.getSession(),
+  /** @param {Parameters<import("@supabase/supabase-js").SupabaseClient["auth"]["signInWithPassword"]>[0]} credentials */
+  signInWithPassword: async (credentials) =>
+    (await getSupabase()).auth.signInWithPassword(credentials),
   signOut: async (...args) => (await getSupabase()).auth.signOut(...args),
 
   /**

@@ -31,7 +31,6 @@ const AdminLayout = lazy(() => import("./pages/admin/AdminLayout.jsx"));
 const AdminNotices = lazy(() => import("./pages/admin/AdminNotices.jsx"));
 const AdminInquiries = lazy(() => import("./pages/admin/AdminInquiries.jsx"));
 const AdminSeo = lazy(() => import("./pages/admin/AdminSeo.jsx"));
-const AdminClusters = lazy(() => import("./pages/admin/AdminClusters.jsx"));
 
 /** 브랜드 사이트에만 붙는 연출 요소 (관리자 화면에는 넣지 않는다) */
 function SiteChrome() {
@@ -116,14 +115,6 @@ export default function AppRoutes() {
           element={
             <AdminPage>
               <AdminSeo />
-            </AdminPage>
-          }
-        />
-        <Route
-          path="clusters"
-          element={
-            <AdminPage>
-              <AdminClusters />
             </AdminPage>
           }
         />

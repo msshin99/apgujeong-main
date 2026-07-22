@@ -1,8 +1,12 @@
 import { isSupabaseReady, restSelect, storagePublicUrl } from "./rest.js";
-import { CLUSTERS, ROUTES, SITE } from "./seoData.js";
+import { ROUTES, SITE } from "./seoData.js";
 
 /**
- * SEO 설정 데이터 접근 — seo_settings · seo_pages · topic_clusters.
+ * SEO 설정 데이터 접근 — seo_settings · seo_pages.
+ *
+ * 토픽 클러스터는 여기 없다. 클러스터는 정보구조 결정이라 운영자가 수시로 바꿀 값이
+ * 아니어서 `seoData.js` 의 `CLUSTERS` 에 코드로 고정해 두었다. 클러스터를 알아야 하는
+ * 쪽(seo.js 의 internalLinksFor 등)은 그 상수를 직접 읽는다.
  *
  * 공지사항(`notices.js`)과 같은 계약이다. Supabase 가 연결돼 있으면 DB 를,
  * 아니면 `seoData.js` 의 정적 원본을 쓴다. 화면은 어느 쪽인지 신경 쓰지 않아도 되도록
@@ -19,7 +23,7 @@ import { CLUSTERS, ROUTES, SITE } from "./seoData.js";
  * 화면이 그 상태를 안내하며 저장 버튼을 잠근다.
  *
  * **이 파일은 useSeo 를 통해 모든 공개 라우트가 끌고 온다.** 그래서 읽기는
- * anon 키로 되는 rest.js 의 fetch 로만 하고(세 표 모두 select 가 anon 에 열려 있다),
+ * anon 키로 되는 rest.js 의 fetch 로만 하고(두 표 모두 select 가 anon 에 열려 있다),
  * SDK 는 관리자 저장·업로드 함수 안에서만 동적으로 불러온다. 위에서 정적으로
  * import 하면 홈 한 번 여는 데 관리자 SDK 가 통째로 딸려 온다.
  */
@@ -37,10 +41,7 @@ const SETTINGS_COLUMNS =
 
 const PAGE_COLUMNS =
   "id, route, title, description, keywords, primary_keyword, og_path, canonical_url, " +
-  "robots_index, robots_follow, robots_extra, faq, schema_type, cluster_id, admin_note, updated_at";
-
-const CLUSTER_COLUMNS =
-  "id, name, slug, description, pillar_route, keywords, sort_order, updated_at";
+  "robots_index, robots_follow, robots_extra, faq, schema_type, admin_note, updated_at";
 
 /**
  * 관리 대상 라우트. `seoData.js` 의 ROUTES 키 순서를 그대로 쓴다.
@@ -89,7 +90,7 @@ function missingSeoTable(error) {
 
 /**
  * 표가 없어서 난 오류면 정적 원본으로 돌아가고, 그 밖의 오류는 그대로 올린다.
- * 읽기 세 함수가 같은 판정을 하므로 한 곳에 모아 둔다.
+ * 읽기 두 함수가 같은 판정을 하므로 한 곳에 모아 둔다.
  */
 async function readOrFallback(run, fallback) {
   try {
@@ -149,33 +150,10 @@ function staticSettingsRow() {
   };
 }
 
-/**
- * 정적 클러스터에 붙이는 가짜 id.
- *
- * 정적 모드에서는 저장이 막혀 있으므로 이 id 는 오직 "페이지 ↔ 클러스터" 를
- * 화면에서 잇는 데만 쓰인다. 1부터 매기면 나중에 DB 로 넘어갔을 때의 id 와
- * 겹쳐 보일 수 있어 헷갈리므로, 절대 DB 에 없을 음수를 쓴다.
- */
-const staticClusterId = (index) => -(index + 1);
-
-/** seoData.js 의 CLUSTERS → topic_clusters 행 모양 */
-function staticClusterRows() {
-  return CLUSTERS.map((c, i) => ({
-    id: staticClusterId(i),
-    name: c.name,
-    slug: c.slug,
-    description: c.description ?? "",
-    pillar_route: c.pillarRoute,
-    keywords: Array.isArray(c.keywords) ? c.keywords : [],
-    sort_order: (i + 1) * 10,
-    updated_at: null,
-  }));
-}
-
 /** seoData.js 의 ROUTES 한 칸 → seo_pages 한 행 모양 */
 function staticPageRow(route, index) {
-  const meta = ROUTES[route] ?? {};
-  const clusterIndex = CLUSTERS.findIndex((c) => c.routes.includes(route));
+  /* ROUTES 는 라우트마다 칸 구성이 다르다. seo.js 의 staticMeta 와 같은 이유로 사전 취급한다 */
+  const meta = /** @type {Record<string, any>} */ (ROUTES[route] ?? {});
   return {
     id: -(index + 1),
     route,
@@ -190,7 +168,6 @@ function staticPageRow(route, index) {
     robots_extra: [],
     faq: Array.isArray(meta.faq) ? meta.faq : [],
     schema_type: meta.schemaType ?? null,
-    cluster_id: clusterIndex === -1 ? null : staticClusterId(clusterIndex),
     admin_note: "",
     updated_at: null,
   };
@@ -201,11 +178,12 @@ function staticPageRow(route, index) {
 /**
  * 사이트 전역 설정 한 행.
  *
- * @returns {Promise<{ source: "db"|"static", row: object }>}
+ * @returns {Promise<{ source: "db"|"static", row: Record<string, any> }>}
  *   source 가 "static" 이면 마이그레이션 전이라 **저장할 곳이 없다.**
  *   화면은 이 값을 보고 안내를 띄우고 저장 버튼을 잠근다.
  */
 export async function loadSeoSettings() {
+  /** @returns {{ source: "db"|"static", row: Record<string, any> }} */
   const fallback = () => ({ source: "static", row: staticSettingsRow() });
   if (!isSupabaseReady) return fallback();
 
@@ -229,9 +207,10 @@ export async function loadSeoSettings() {
  * 채워 목록에 끼워 넣는다. 목록에서 아예 사라지면 운영자는 그 페이지의 메타를
  * 손볼 방법이 없다는 것조차 알 수 없다.
  *
- * @returns {Promise<{ source: "db"|"static", rows: object[] }>}
+ * @returns {Promise<{ source: "db"|"static", rows: Record<string, any>[] }>}
  */
 export async function loadSeoPages() {
+  /** @returns {{ source: "db"|"static", rows: Record<string, any>[] }} */
   const fallback = () => ({
     source: "static",
     rows: SEO_ROUTES.map((route, i) => staticPageRow(route, i)),
@@ -252,28 +231,6 @@ export async function loadSeoPages() {
   }, fallback);
 }
 
-/**
- * 토픽 클러스터 전체.
- * @returns {Promise<{ source: "db"|"static", rows: object[] }>}
- */
-export async function loadClusters() {
-  const fallback = () => ({ source: "static", rows: staticClusterRows() });
-  if (!isSupabaseReady) return fallback();
-
-  return readOrFallback(async () => {
-    const data = await restSelect("topic_clusters", {
-      columns: CLUSTER_COLUMNS,
-      order: [
-        ["sort_order", "asc"],
-        ["id", "asc"],
-      ],
-    });
-    /* 표는 있는데 비어 있는 경우는 정적으로 되돌리지 않는다 —
-       운영자가 클러스터를 전부 지운 상태일 수 있고, 그건 유효한 상태다 */
-    return { source: "db", rows: data ?? [] };
-  }, fallback);
-}
-
 /* ────────── 쓰기 ──────────
  *
  * 여기 아래는 전부 로그인한 사람의 JWT 로만 통과한다. 그래서 SDK 가 필요하고,
@@ -291,7 +248,7 @@ async function adminClient() {
  * 사이트 전역 설정 저장. seo_settings 는 항상 id=1 한 행뿐이라 update 만 한다
  * (DB 에도 insert/delete 정책이 아예 없다).
  *
- * @param {object} fields - snake_case 칸 이름 그대로
+ * @param {Record<string, any>} fields - snake_case 칸 이름 그대로
  */
 export async function saveSeoSettings(fields) {
   const patch = {
@@ -338,7 +295,7 @@ function normalizeHours(list) {
  * 행이 없으면(코드에 새로 생긴 라우트) 만들어 준다.
  *
  * @param {string} route
- * @param {object} fields - snake_case 칸 이름 그대로
+ * @param {Record<string, any>} fields - snake_case 칸 이름 그대로
  */
 export async function saveSeoPage(route, fields) {
   const patch = {
@@ -354,7 +311,6 @@ export async function saveSeoPage(route, fields) {
     robots_extra: cleanList(fields.robots_extra),
     faq: normalizeFaqRows(fields.faq),
     schema_type: nullIfBlank(fields.schema_type),
-    cluster_id: fields.cluster_id ?? null,
     admin_note: fields.admin_note ?? "",
   };
 
@@ -380,87 +336,6 @@ function normalizeFaqRows(list) {
   return list
     .map((f) => ({ q: String(f?.q ?? "").trim(), a: String(f?.a ?? "").trim() }))
     .filter((f) => f.q && f.a);
-}
-
-/** 클러스터 새로 만들기 */
-export async function createCluster(fields) {
-  const supabase = await adminClient();
-  const { data, error } = await supabase
-    .from("topic_clusters")
-    .insert(clusterPatch(fields))
-    .select(CLUSTER_COLUMNS)
-    .single();
-  if (error) throw error;
-  return data;
-}
-
-/** 클러스터 고치기 */
-export async function updateCluster(id, fields) {
-  const supabase = await adminClient();
-  const { data, error } = await supabase
-    .from("topic_clusters")
-    .update(clusterPatch(fields))
-    .eq("id", id)
-    .select(CLUSTER_COLUMNS)
-    .single();
-  if (error) throw error;
-  return data;
-}
-
-function clusterPatch(fields) {
-  return {
-    name: String(fields.name ?? "").trim(),
-    slug: String(fields.slug ?? "").trim(),
-    description: fields.description ?? "",
-    pillar_route: fields.pillar_route,
-    keywords: cleanList(fields.keywords),
-    sort_order: Number(fields.sort_order) || 0,
-  };
-}
-
-/**
- * 클러스터 삭제.
- *
- * seo_pages.cluster_id 는 on delete set null 이라 페이지는 남고 소속만 풀린다.
- * 반대로 pillar_route 는 on delete restrict 로 seo_pages 를 지키고 있으므로,
- * 여기서 지워지는 것은 클러스터뿐이다.
- */
-export async function deleteCluster(id) {
-  const supabase = await adminClient();
-  const { error } = await supabase.from("topic_clusters").delete().eq("id", id);
-  if (error) throw error;
-}
-
-/**
- * 클러스터에 속한 페이지 목록을 통째로 맞춘다.
- *
- * 빠진 라우트를 null 로 되돌리는 일을 서버 쪽 `not in` 으로 하지 않는 이유 —
- * 라우트에는 `/` 와 `:` 가 들어 있어 PostgREST 필터 문자열에서 따옴표 처리가 까다롭다.
- * 화면이 이미 "이전 목록" 을 알고 있으니 뺄 것을 명시적으로 넘기는 편이 안전하다.
- *
- * @param {number} clusterId
- * @param {string[]} routes         - 이제부터 이 클러스터에 속할 라우트
- * @param {string[]} previousRoutes - 직전까지 속해 있던 라우트
- */
-export async function assignClusterRoutes(clusterId, routes, previousRoutes = []) {
-  const next = cleanList(routes);
-  const removed = cleanList(previousRoutes).filter((r) => !next.includes(r));
-
-  const supabase = await adminClient();
-  if (removed.length > 0) {
-    const { error } = await supabase
-      .from("seo_pages")
-      .update({ cluster_id: null })
-      .in("route", removed);
-    if (error) throw error;
-  }
-  if (next.length > 0) {
-    const { error } = await supabase
-      .from("seo_pages")
-      .update({ cluster_id: clusterId })
-      .in("route", next);
-    if (error) throw error;
-  }
 }
 
 /* ────────── OG 이미지 ────────── */

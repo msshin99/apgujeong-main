@@ -6,7 +6,6 @@
 
 - **`seo_settings`** — 사이트 전역 기본값. 한 행만 존재한다
 - **`seo_pages`** — 라우트별 override. `/`, `/brand`, `/menu` … 8 개 행
-- **`topic_clusters`** — 이미 있는 페이지들을 검색 의도별로 묶는 표. **새 글을 만드는 표가 아니다**
 - **`notices` 의 SEO 칸** — 공지 한 건 한 건의 제목·설명·OG 이미지
 - **`seo-images` 버킷** — OG(공유) 이미지 전용. 반드시 공개 버킷
 
@@ -58,9 +57,6 @@ $$;
 ## 2. 테이블 · 정책 만들기
 
 > **아래 SQL 블록은 통째로 한 번에 붙여넣고 Run 한다.**
-> `seo_pages` 와 `topic_clusters` 가 **서로를 참조**하기 때문이다
-> (`topic_clusters.pillar_route → seo_pages.route`, `seo_pages.cluster_id → topic_clusters.id`).
-> 나눠서 실행하면 중간에 참조 대상이 없어 실패한다.
 > 여러 번 다시 실행해도 안전하게 써 두었다(`if not exists` / `on conflict do nothing`).
 
 ### 읽기는 왜 익명에게 여는가
@@ -191,7 +187,6 @@ create table if not exists public.seo_pages (
     -- [{ "q": "...", "a": "..." }] . FAQPage 는 이 배열이 비면 아예 안 내보낸다.
     -- ⚠ 여기 넣은 Q&A 는 **페이지 본문에도 보여야 한다.** 마크업에만 있는 FAQ 는 정책 위반이다.
   schema_type     text,                                 -- 라우트 기본 판정을 덮어쓸 때만 채운다
-  cluster_id      bigint,                               -- FK 는 아래에서 건다(순환 참조 때문)
 
   admin_note      text        not null default '',      -- 운영자 메모. 밖으로 안 나간다
   updated_at      timestamptz not null default now(),
@@ -206,8 +201,6 @@ create table if not exists public.seo_pages (
                                     ('WebPage','AboutPage','ContactPage','CollectionPage',
                                      'ItemPage','FAQPage','Restaurant','Menu'))
 );
-
-create index if not exists seo_pages_cluster_idx on public.seo_pages (cluster_id);
 
 drop trigger if exists seo_pages_touch on public.seo_pages;
 create trigger seo_pages_touch
@@ -239,74 +232,30 @@ create policy "관리자 SEO 페이지 수정" on public.seo_pages
 
 create policy "관리자 SEO 페이지 삭제" on public.seo_pages
   for delete to authenticated using (public.is_admin());
-
-
--- ────────────────────────────────────────────
--- (3) 토픽 클러스터 (필러 ↔ 클러스터)
---
--- **새 글을 만드는 표가 아니다. 이미 있는 페이지들을 묶는 표다.**
--- 묶는 이유는 하나 — 어느 페이지가 어느 검색어의 대표(필러)인지 정해 두어야
--- 내부링크를 그쪽으로 몰아 줄 수 있고, 같은 검색어로 두 페이지가 서로 경쟁하는
--- 자기잠식(cannibalization)을 막을 수 있다.
---
--- pillar_route 는 seo_pages.route 를 참조한다. 존재하지 않는 경로를 대표로 적어 두면
--- 내부링크 생성기가 조용히 아무 데도 안 걸게 되므로 DB 가 막는다.
--- ────────────────────────────────────────────
-create table if not exists public.topic_clusters (
-  id           bigint generated always as identity primary key,
-  name         text        not null,                    -- 관리자 화면에 보이는 이름
-  slug         text        not null unique,             -- 코드에서 가리키는 키
-  description  text        not null default '',         -- 이 묶음이 어떤 방문자를 노리는지
-  pillar_route text        not null references public.seo_pages (route)
-                             on update cascade on delete restrict,
-  keywords     text[]      not null default '{}',       -- 이 묶음이 통째로 노리는 검색어군
-  sort_order   integer     not null default 0,
-  created_at   timestamptz not null default now(),
-  updated_at   timestamptz not null default now(),
-
-  constraint topic_clusters_slug_form check (slug ~ '^[a-z0-9]+(-[a-z0-9]+)*$'),
-  constraint topic_clusters_name_len  check (char_length(name) between 1 and 60)
-);
-
-create index if not exists topic_clusters_order_idx on public.topic_clusters (sort_order, id);
-
-drop trigger if exists topic_clusters_touch on public.topic_clusters;
-create trigger topic_clusters_touch
-  before update on public.topic_clusters
-  for each row execute function public.touch_updated_at();
-
-alter table public.topic_clusters enable row level security;
-
-drop policy if exists "클러스터 공개 읽기"  on public.topic_clusters;
-drop policy if exists "관리자 클러스터 등록" on public.topic_clusters;
-drop policy if exists "관리자 클러스터 수정" on public.topic_clusters;
-drop policy if exists "관리자 클러스터 삭제" on public.topic_clusters;
-
-create policy "클러스터 공개 읽기" on public.topic_clusters
-  for select to anon, authenticated using (true);
-
-create policy "관리자 클러스터 등록" on public.topic_clusters
-  for insert to authenticated with check (public.is_admin());
-
-create policy "관리자 클러스터 수정" on public.topic_clusters
-  for update to authenticated using (public.is_admin()) with check (public.is_admin());
-
-create policy "관리자 클러스터 삭제" on public.topic_clusters
-  for delete to authenticated using (public.is_admin());
-
--- 이제야 seo_pages → topic_clusters 방향 FK 를 걸 수 있다.
--- 클러스터를 지워도 페이지는 남아야 하므로 set null 이다(페이지가 같이 사라지면 사고다).
-alter table public.seo_pages drop constraint if exists seo_pages_cluster_fk;
-alter table public.seo_pages
-  add constraint seo_pages_cluster_fk
-  foreign key (cluster_id) references public.topic_clusters (id) on delete set null;
 ```
 
 ### 확인
 
-**Table Editor** 에 `seo_settings` / `seo_pages` / `topic_clusters` 세 표가 보이고,
-셋 다 이름 옆에 **RLS enabled** 표시가 있어야 한다.
+**Table Editor** 에 `seo_settings` / `seo_pages` 두 표가 보이고,
+둘 다 이름 옆에 **RLS enabled** 표시가 있어야 한다.
 `select count(*) from public.seo_pages;` 가 **8** 이면 된다.
+
+### 토픽 클러스터는 표가 아니다 — 코드에 고정돼 있다
+
+**클러스터를 담는 DB 표는 만들지 않는다.** 어느 페이지가 어느 검색 의도의 대표(필러)인지,
+어떤 페이지끼리 한 묶음인지는 `src/lib/seoData.js` 의 **`CLUSTERS`** 상수에 박혀 있다.
+지금은 세 묶음이다 — 곱창 미식(`/menu`) · 지점 방문(`/stores`) · 브랜드·가맹(`/brand`).
+페이지 하단의 "함께 보기" 내부링크는 전부 이 상수에서 나온다(`src/lib/seo.js` 의
+`internalLinksFor`).
+
+**바꾸려면 그 파일을 고쳐서 다시 배포해야 한다.** 관리자 화면에는 클러스터를 편집하는
+자리가 없다.
+
+왜 이렇게 두었나 — 클러스터는 **정보구조 결정**이지 운영 문구가 아니다. 사이트에 페이지가
+여덟 개뿐인데 묶음을 바꾼다는 건 사이트의 뼈대를 다시 짠다는 뜻이고, 그건 코드 변경과 같이
+가야 할 일이다. 반면 제목·설명·키워드는 성과를 보며 수시로 고치는 값이라 DB 로 뺐다.
+운영자가 클릭 한 번으로 필러를 옮길 수 있게 두면, 어느 날 내부링크가 통째로 뒤집혀도
+아무도 이유를 모른다.
 
 ---
 
@@ -426,40 +375,16 @@ on conflict (route) do update set
 -- /stores·/wine·/notice→CollectionPage, /notice/:id→ItemPage, 나머지→WebPage).
 -- 이 칸은 그 판정을 **덮어쓸 때만** 채운다.
 
-
--- ────────────────────────────────────────────
--- 3-c. 클러스터 3 개와 소속
--- ────────────────────────────────────────────
-insert into public.topic_clusters (name, slug, description, pillar_route, keywords, sort_order) values
-  ('곱창 미식', 'gopchang-dining',
-   '무엇을 먹을지 정하려는 방문자. 메뉴가 대표 페이지이고 와인은 그 곁가지다.',
-   '/menu',
-   '{"압구정곱창","한우곱창","곱창구이","대창","막창","곱창전골","곱창 가격"}', 10),
-  ('지점 방문', 'store-visit',
-   '어디로 갈지·언제 여는지 확인하려는 방문자. 지역 검색 의도의 착지점이다.',
-   '/stores',
-   '{"압구정 곱창 맛집","강남 곱창","성수 곱창","압구정곱창 지점","압구정곱창 예약"}', 20),
-  ('브랜드·가맹', 'brand-franchise',
-   '창업을 검토하는 예비 가맹점주. 브랜드 신뢰 근거와 창업비용이 한 페이지에 있다.',
-   '/brand',
-   '{"곱창 프랜차이즈","곱창집 창업","압구정곱창 가맹","가맹비","창업비용","예상 매출"}', 30)
-on conflict (slug) do nothing;
-
--- 페이지를 클러스터에 붙인다. '/' 는 어디에도 안 붙인다 —
--- 홈은 클러스터의 구성원이 아니라 세 필러를 모두 가리키는 허브다.
--- 홈을 특정 클러스터에 넣는 순간 그 필러와 브랜드명 검색어를 두고 경쟁하게 된다.
-update public.seo_pages p set cluster_id = c.id
-  from public.topic_clusters c
- where (c.slug = 'gopchang-dining' and p.route in ('/menu', '/wine'))
-    or (c.slug = 'store-visit'     and p.route in ('/stores', '/notice', '/notice/:id'))
-    or (c.slug = 'brand-franchise' and p.route in ('/brand', '/contact'));
+-- 클러스터를 넣는 SQL 은 없다. 위 2 번 끝의 설명대로 클러스터는
+-- src/lib/seoData.js 의 CLUSTERS 에 코드로 고정돼 있다.
+-- (admin_note 에 "미식 클러스터의 필러" 같은 메모가 남아 있는데, 그건 어디까지나
+--  운영자용 설명이고 실제 소속은 그 상수가 정한다.)
 ```
 
 ### 확인
 
 ```sql
-select route, primary_keyword, cluster_id from public.seo_pages order by route;
-select slug, pillar_route from public.topic_clusters order by sort_order;
+select route, primary_keyword from public.seo_pages order by route;
 ```
 
 그리고 **로그아웃 상태에서 한 번 더 확인한다.** prerender 는 anon 으로 돌기 때문에
@@ -485,25 +410,19 @@ alter table public.notices
   add column if not exists seo_description text   not null default '',  -- 비면 본문 첫 문단
   add column if not exists og_path         text,                        -- seo-images 버킷 경로
   add column if not exists faq             jsonb  not null default '[]'::jsonb,
-  add column if not exists keywords        text[] not null default '{}',
-  add column if not exists cluster_id      bigint;
+  add column if not exists keywords        text[] not null default '{}';
 
 alter table public.notices
   drop constraint if exists notices_seo_title_len,
   drop constraint if exists notices_seo_desc_len,
   drop constraint if exists notices_faq_arr,
-  drop constraint if exists notices_faq_size,
-  drop constraint if exists notices_cluster_fk;
+  drop constraint if exists notices_faq_size;
 
 alter table public.notices
   add constraint notices_seo_title_len check (char_length(seo_title)       <= 120),
   add constraint notices_seo_desc_len  check (char_length(seo_description) <= 320),
   add constraint notices_faq_arr       check (jsonb_typeof(faq) = 'array'),
-  add constraint notices_faq_size      check (jsonb_array_length(faq) <= 20),
-  add constraint notices_cluster_fk    foreign key (cluster_id)
-                                       references public.topic_clusters (id) on delete set null;
-
-create index if not exists notices_cluster_idx on public.notices (cluster_id);
+  add constraint notices_faq_size      check (jsonb_array_length(faq) <= 20);
 ```
 
 > **`add constraint` 는 기존 행도 검사한다.** 새로 만든 칸이라 전부 기본값이므로
@@ -637,7 +556,7 @@ create policy "관리자 SEO 이미지 삭제" on storage.objects
 |---|---|---|
 | 0 | `docs/supabase-setup.md` **2-4** (관리자 명단 · `is_admin()`) | **선행 필수** |
 | 1 | `touch_updated_at()` | 필수 |
-| 2 | 세 테이블 + RLS (**한 번에** 붙여넣기) | 필수 |
+| 2 | 두 테이블 + RLS (**한 번에** 붙여넣기) | 필수 |
 | 3 | 초기값 시드 — `site_url` 은 손으로 채운다 | 필수 |
 | 4 | `notices` SEO 칸 추가 | 필수 |
 | 5 | NAP — 지금은 아무것도 안 한다. `same_as` 만 선택적으로 | 선택 |
@@ -655,8 +574,11 @@ create policy "관리자 SEO 이미지 삭제" on storage.objects
 → `docs/supabase-setup.md` 2-4 를 아직 실행하지 않았다. 그것부터 한다.
 
 **"`relation "public.seo_pages" does not exist` 로 실패한다"**
-→ 2 번 SQL 을 나눠서 실행했다. `topic_clusters` 가 `seo_pages.route` 를 참조하므로
-   블록을 통째로 한 번에 Run 해야 한다.
+→ 2 번을 건너뛰고 3 번(시드)부터 실행했다. 2 번 블록을 먼저 통째로 Run 한다.
+
+**"클러스터를 관리자 화면에서 바꾸고 싶다"**
+→ 그런 화면은 없다. 2 번 끝의 설명을 읽는다. `src/lib/seoData.js` 의 `CLUSTERS` 를
+   고쳐서 다시 배포해야 한다.
 
 **"빌드 결과물의 제목이 예전 그대로다"**
 → 세 가지를 순서대로 본다. (1) 시드를 실행했는가 (2) **로그아웃 상태에서** REST 로
