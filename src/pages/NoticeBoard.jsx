@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import Reveal, { RevealText } from "../Reveal.jsx";
 import Tilt from "../Tilt.jsx";
-import { useBreakpoint } from "../useBreakpoint.js";
 import Img from "../Img.jsx";
 import { listNotices, seededNotices } from "../lib/notices.js";
 
@@ -78,7 +77,6 @@ function NoticeCard({ item, eager = false }) {
 }
 
 export default function NoticeBoard() {
-  const { isCompact } = useBreakpoint();
   /* 프리렌더는 effect 를 돌리지 않는다. 빌드가 심어 둔 목록이 있으면 첫 렌더부터
      카드를 그려서 정적 HTML 에 제목과 날짜가 실리게 한다.
      브라우저에서는 언제나 null 이라 종전처럼 뼈대부터 시작한다 */
@@ -159,17 +157,16 @@ export default function NoticeBoard() {
               /* 한 줄 단위로 시차를 준다. 전체에 순번을 매기면
                  마지막 카드가 나타나기까지 지나치게 오래 걸린다 */
               <Reveal key={item.id} delay={(i % 3) * 120} y={36}>
-                {isCompact ? (
-                  /* 1열이라 첫 화면에 보이는 건 사실상 첫 장뿐이다.
-                     여기서도 3장을 먼저 받으면 안 보이는 두 장 때문에
-                     모바일에서 아낀 대역폭을 도로 쓰게 된다 */
+                {/* Tilt 는 canHover(포인터+모션허용)에서만 3D 로 기울고 터치에서는
+                    그냥 자식을 통과시키므로, 분기 없이 항상 감싸도 모바일은 종전과 같다.
+                    이렇게 하면 트리가 하나라 서버(데스크톱 프리렌더)와 클라이언트가
+                    갈리지 않는다 */}
+                <Tilt max={6} perspective={1400}>
+                  {/* eager 는 첫 장만. 데스크톱 3열에서도 2·3번째는 화면 안이라
+                      브라우저가 바로 받고, 모바일 1열에서는 안 보이는 장을 미리
+                      받아 대역폭을 낭비하지 않는다 */}
                   <NoticeCard item={item} eager={i < 1} />
-                ) : (
-                  <Tilt max={6} perspective={1400}>
-                    {/* 3열이라 첫 줄(화면에 바로 보이는 3장)만 먼저 받는다 */}
-                    <NoticeCard item={item} eager={i < 3} />
-                  </Tilt>
-                )}
+                </Tilt>
               </Reveal>
             ))}
           </div>
